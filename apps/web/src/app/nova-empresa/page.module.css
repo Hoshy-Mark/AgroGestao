@@ -1,0 +1,90 @@
+.wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.card {
+  max-width: 480px;
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 32px;
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.texto {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.resumo {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 24px;
+}
+
+.resumoItem {
+  flex: 1;
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.resumoLabel {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.resumoValor {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.botao {
+  width: 100%;
+  background: var(--accent);
+  color: #06170d;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 18px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.botao:hover {
+  background: var(--accent-strong);
+}
+
+.botao:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.erro {
+  margin-top: 16px;
+  background: var(--bg);
+  border: 1px solid var(--accent-danger);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: var(--accent-danger);
+  line-height: 1.5;
+}

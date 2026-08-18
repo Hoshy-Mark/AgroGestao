@@ -1,17 +1,9 @@
+import Link from "next/link";
+import { cookies } from "next/headers";
 import { criarEmpresaHerdada } from "@agrogestao/domain";
+import { ApiError, buscarEmpresa, type EmpresaApi } from "@/lib/api";
 import { AppShell } from "@/components/AppShell";
 import styles from "./page.module.css";
-
-// Placeholder ate a tela conversar com a API (apps/api). Por enquanto usa o
-// mesmo motor de dominio para garantir que o estado inicial bate com o
-// que o backend vai gerar (docs/GAME_ECONOMY.md secao 1).
-const empresa = criarEmpresaHerdada({
-  id: "empresa-exemplo",
-  nome: "Granja Herdada",
-  caixaInicial: 8000,
-  dividaHerdada: 15000,
-  fundadaEm: new Date().toISOString(),
-});
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -19,12 +11,64 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
-const kpis = [
-  { label: "Receita (mês)", valor: "—", tom: "neutro" as const },
-  { label: "Custos (mês)", valor: "—", tom: "neutro" as const },
-  { label: "Lucro (mês)", valor: "—", tom: "neutro" as const },
-  { label: "Dívida", valor: formatoMoeda.format(empresa.estado.divida), tom: "alerta" as const },
-];
+interface EmpresaResumo {
+  nome: string;
+  diaAtual: number;
+  caixa: number;
+  divida: number;
+  reputacao: number;
+  conhecimento: number;
+}
+
+// Mock local — garante que a tela sempre renderiza algo coerente mesmo sem
+// API/Postgres no ar (README: "sem Postgres so da pra rodar o frontend").
+function empresaMock(): EmpresaResumo {
+  const empresa = criarEmpresaHerdada({
+    id: "empresa-mock",
+    nome: "Granja Herdada",
+    caixaInicial: 8000,
+    dividaHerdada: 15000,
+    fundadaEm: new Date().toISOString(),
+  });
+  return {
+    nome: empresa.nome,
+    diaAtual: empresa.estado.diaAtual,
+    caixa: empresa.estado.caixa,
+    divida: empresa.estado.divida,
+    reputacao: empresa.estado.reputacao,
+    conhecimento: empresa.estado.conhecimento,
+  };
+}
+
+function paraResumo(empresa: EmpresaApi): EmpresaResumo {
+  return {
+    nome: empresa.nome,
+    diaAtual: empresa.diaAtual,
+    caixa: empresa.caixa,
+    divida: empresa.divida,
+    reputacao: empresa.reputacao,
+    conhecimento: empresa.conhecimento,
+  };
+}
+
+async function carregarEmpresa(): Promise<{
+  empresa: EmpresaResumo;
+  conectadoApi: boolean;
+  erroApi?: string;
+}> {
+  const empresaId = (await cookies()).get("empresaId")?.value;
+  if (!empresaId) {
+    return { empresa: empresaMock(), conectadoApi: false };
+  }
+
+  try {
+    const empresa = await buscarEmpresa(empresaId);
+    return { empresa: paraResumo(empresa), conectadoApi: true };
+  } catch (erro) {
+    const mensagem = erro instanceof ApiError ? erro.message : "erro desconhecido";
+    return { empresa: empresaMock(), conectadoApi: false, erroApi: mensagem };
+  }
+}
 
 const negocios = [
   {
@@ -50,15 +94,37 @@ const atividades = [
   { icone: "📋", texto: "Contrato herdado vence em 12 dias", severidade: "info" as const },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { empresa, conectadoApi, erroApi } = await carregarEmpresa();
+
+  const kpis = [
+    { label: "Receita (mês)", valor: "—", tom: "neutro" as const },
+    { label: "Custos (mês)", valor: "—", tom: "neutro" as const },
+    { label: "Lucro (mês)", valor: "—", tom: "neutro" as const },
+    { label: "Dívida", valor: formatoMoeda.format(empresa.divida), tom: "alerta" as const },
+  ];
+
   return (
     <AppShell
       empresaNome={empresa.nome}
-      dia={empresa.estado.diaAtual}
-      caixa={formatoMoeda.format(empresa.estado.caixa)}
-      reputacao={empresa.estado.reputacao}
-      conhecimento={empresa.estado.conhecimento}
+      dia={empresa.diaAtual}
+      caixa={formatoMoeda.format(empresa.caixa)}
+      reputacao={empresa.reputacao}
+      conhecimento={empresa.conhecimento}
     >
+      {!conectadoApi && (
+        <section className={styles.demoBanner}>
+          <span>
+            {erroApi
+              ? "Modo demo — não foi possível falar com a API (" + erroApi + ")."
+              : "Modo demo — dados locais, ainda sem empresa criada na API."}
+          </span>
+          <Link className={styles.demoBannerLink} href="/nova-empresa">
+            Assumir uma propriedade de verdade →
+          </Link>
+        </section>
+      )}
+
       <section className={styles.mentorCard}>
         <div className={styles.mentorAvatar}>👴</div>
         <div className={styles.mentorFala}>

@@ -12,6 +12,8 @@ Simulador de gestão agroindustrial — o jogador herda uma pequena propriedade 
 
 A API (`apps/api`) agora persiste `Empresa` → `UnidadeNegocio` → `Lote` via Prisma e expõe um endpoint que roda o `MotorPostura` de verdade: `POST /lotes/:id/avancar-dia`. **Isso ainda não foi testado contra um Postgres real** (o ambiente de desenvolvimento atual não tem Docker/Postgres instalado) — o que foi validado sem banco: schema Prisma (`prisma validate`/`generate`), build do NestJS, boot da aplicação (toda a injeção de dependência e as rotas resolvem certo — o único erro ao subir sem `DATABASE_URL` válido é de conexão, como esperado) e os testes unitários da lógica de tick (`lotes/lote-tick.spec.ts`, puro, sem Prisma). Falta rodar `prisma migrate dev` contra um banco real e testar end-to-end.
 
+O frontend (`apps/web`) já fala com essa API: `/nova-empresa` cria a empresa herdada de verdade via `POST /empresas` e guarda o id numa cookie; o dashboard (`/`) tenta buscar essa empresa (`GET /empresas/:id`) e, se não conseguir (sem cookie, API fora do ar, banco fora do ar), cai graciosamente para os dados mockados de sempre com um banner de "modo demo" — o app nunca fica numa tela quebrada. Esse caminho de erro foi validado de verdade neste ambiente (a API derruba na inicialização sem Postgres, então a chamada falha por conexão recusada, e a UI mostra a mensagem certinha). O caminho de sucesso (criar empresa → cair no dashboard com dado real) ainda não foi validado, por falta de banco.
+
 O que na Domain Bible ainda não tem número sourced (ex.: preço de ração/ovo "oficial") está explicitamente marcado como placeholder de calibração — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md).
 
 ## Estrutura
@@ -44,7 +46,9 @@ npm run test
 # testes da API (logica pura do tick, sem precisar de banco)
 npm run test -w apps/api
 
-# frontend (http://localhost:3000)
+# frontend (http://localhost:3000) — roda sozinho em "modo demo" mesmo sem API/Postgres.
+# Para conectar na API de verdade, copie apps/web/.env.local.example para
+# apps/web/.env.local (API_URL, default http://localhost:3333)
 npm run dev:web
 
 # backend (http://localhost:3333) — precisa de Postgres rodando e DATABASE_URL
@@ -61,9 +65,9 @@ Ver [docs/GDD.md#30](./docs/GDD.md#30-próxima-etapa-recomendada):
 
 1. ~~Preencher a Domain Bible com as regras reais da avicultura de postura.~~ Feito — ver [docs/DOMAIN_BIBLE.md](./docs/DOMAIN_BIBLE.md).
 2. ~~Ligar o `MotorPostura` ao estado da empresa via API/Prisma.~~ Feito — `Empresa`/`UnidadeNegocio`/`Lote` persistidos, `POST /lotes/:id/avancar-dia` roda o motor de verdade. **Falta validar contra um Postgres real** (não testado end-to-end neste ambiente — ver Status acima).
-3. Fechar os números que ainda faltam na Game Economy (preço de ração/ovo "oficial", prazo de fornecedor — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md)).
-4. Ligar o frontend (`apps/web`) na API de verdade — hoje o dashboard só usa `criarEmpresaHerdada` localmente, sem chamar `/empresas`.
-5. Primeiro vertical slice jogável: herança → prólogo → operação → produção → venda → recebimento → fechamento — incluindo emitir `DocumentoFiscal` a cada transação real (hoje o módulo existe no domínio mas nenhum endpoint o chama ainda).
+3. ~~Ligar o frontend (`apps/web`) na API de verdade.~~ Feito — `/nova-empresa` cria a empresa via API, o dashboard busca dados reais com fallback pra modo demo. **Falta validar o caminho de sucesso contra um Postgres real.**
+4. Fechar os números que ainda faltam na Game Economy (preço de ração/ovo "oficial", prazo de fornecedor — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md)).
+5. Primeiro vertical slice jogável: herança → prólogo → operação → produção → venda → recebimento → fechamento — incluindo emitir `DocumentoFiscal` a cada transação real (hoje o módulo existe no domínio mas nenhum endpoint o chama ainda), e ligar o botão "avançar dia" na UI ao endpoint `POST /lotes/:id/avancar-dia`.
 6. Evoluir as demais telas (Negócios, Financeiro, Comercial, Mercado) no mesmo estilo do dashboard.
 
 ## Licença
