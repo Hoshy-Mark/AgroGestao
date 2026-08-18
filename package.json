@@ -15,6 +15,7 @@
     "dev:api": "npm run dev -w apps/api",
     "build": "npm run build -w packages/domain && npm run build -w apps/api && npm run build -w apps/web",
     "test": "npm run test -w packages/domain",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "clean:web": "npm run clean -w apps/web"
   }
 }

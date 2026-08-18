@@ -2,12 +2,13 @@
   "name": "@agrogestao/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Interface web do AgroGestao - Next.js, mobile-first",
+  "description": "Interface web do AgroGestao - Next.js, UI desktop estilo game-management",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "rimraf .next"
   },
   "dependencies": {
     "@agrogestao/domain": "*",
@@ -19,6 +20,7 @@
     "@types/node": "^22.5.4",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "rimraf": "^6.0.1",
     "typescript": "^5.5.4"
   }
 }
