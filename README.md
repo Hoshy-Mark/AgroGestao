@@ -1,5 +1,7 @@
 # AgroGestão
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-4caf7d)](./LICENSE)
+
 Simulador de gestão agroindustrial — o jogador herda uma pequena propriedade rural inexperiente e aprende a administrá-la enquanto a administra. Documento de design completo em [docs/GDD.md](./docs/GDD.md).
 
 > Realismo de decisão, não realismo burocrático. Ver [docs/GDD.md#22](./docs/GDD.md#22-realismo-e-prioridades-de-escopo).
@@ -20,7 +22,7 @@ AgroGestao/
 │   └── domain/               # regras de negocio e motor de simulacao, sem depender de UI/framework
 ├── apps/
 │   ├── api/                  # NestJS + Prisma
-│   └── web/                  # Next.js, UI mobile-first
+│   └── web/                  # Next.js, UI desktop estilo game-management
 ```
 
 `packages/domain` é o núcleo: entidades e o motor de simulação (ex.: `MotorPostura`) vivem ali, testáveis isoladamente, e são consumidos tanto pela API quanto pelo frontend. Ver princípios de modelagem em [docs/GDD.md#23](./docs/GDD.md#23-domain-bible-e-princípios-de-modelagem).
@@ -50,4 +52,8 @@ Ver [docs/GDD.md#30](./docs/GDD.md#30-próxima-etapa-recomendada):
 2. Fechar a Game Economy v0.1 (capital inicial, custos, receitas, prazos).
 3. Especificar o tick diário/semanal da simulação.
 4. Primeiro vertical slice jogável: herança → prólogo → operação → produção → venda → recebimento → fechamento.
-5. Levar o fluxo para a UI mobile.
+5. Evoluir as demais telas (Negócios, Financeiro, Comercial, Mercado) no mesmo estilo do dashboard.
+
+## Licença
+
+[MIT](./LICENSE).
