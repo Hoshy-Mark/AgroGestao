@@ -1,11 +1,12 @@
 import type { EstadoEmpresa, EstagioLote, LoteProducao } from "../entities/index.js";
 import { estagioPorIdadeSemanas, idadeEmSemanas } from "../entities/index.js";
 import { taxaPosturaPorSemana } from "./curvaPostura.js";
+import { multiplicadorSazonal } from "./sazonalidade.js";
 
 /**
  * Tick diario do MotorPostura (GDD secao 10), com parametros consolidados
- * na Domain Bible secao 19 (v0.3). Numeros ainda sao ponto de partida para
- * calibracao, nao valores finais — ver docs/DOMAIN_BIBLE.md secao 19/20.
+ * na Domain Bible secao 23 (v0.3). Numeros ainda sao ponto de partida para
+ * calibracao, nao valores finais — ver docs/DOMAIN_BIBLE.md secao 23/24.
  */
 
 /** Consumo diario por ave (kg), por estagio do lote — Domain Bible secao 3.1. */
@@ -24,17 +25,20 @@ const CONSUMO_DIARIO_KG: Record<EstagioLote, number> = {
 };
 
 /**
- * Mortalidade diaria base, aplicada uniformemente enquanto a Domain Bible
- * nao tiver uma taxa numerica sourced (ver docs/DOMAIN_BIBLE.md secao 20,
- * "Ambiencia como multiplicador quantitativo de mortalidade" — pendente).
- * ~0,018%/dia acumula ~11% de mortalidade ao longo de um ciclo de 90
- * semanas, ordem de grandeza plausivel para uma operacao razoavelmente bem
- * manejada — mas e um placeholder de calibracao, nao um dado de fonte.
+ * Mortalidade diaria base — sourced a partir de Sarcinelli et al. (2007):
+ * 8-10% de mortalidade ao longo de toda a fase de producao (72 semanas /
+ * 504 dias), distribuida uniformemente: 9% / 504 ≈ 0,0179%/dia. A
+ * distribuicao uniforme e uma simplificacao reconhecida (na pratica a
+ * mortalidade concentra mais no inicio da postura e no fim do ciclo) —
+ * ver Domain Bible secao 4 e secao 24 (pendencias).
  */
 const TAXA_MORTALIDADE_DIARIA_BASE = 0.00018;
 
 /** Funrural: 1,2% + 0,1% GILRAT sobre receita bruta, regime com Livro Caixa (Domain Bible 13.3). */
 const ALIQUOTA_FUNRURAL_PADRAO = 0.013;
+
+/** Salario CLT de referencia do funcionario herdado (CBO 6233-10), ponto de partida dentro da faixa R$1.800-2.550 (Domain Bible secao 20). */
+export const CUSTO_MENSAL_FUNCIONARIO_CLT_PADRAO = 2000;
 
 export interface ParametrosMercadoDia {
   precoKgRacao: number;
@@ -42,6 +46,15 @@ export interface ParametrosMercadoDia {
   precoMedioDuzia: number;
   /** Sobrescreve a aliquota padrao (ex.: 0,20 no regime simplificado sem Livro Caixa — Domain Bible 13.3). */
   aliquotaFunrural?: number;
+  /** Mes do calendario simulado (1-12). Quando informado, aplica o multiplicador sazonal sobre `precoMedioDuzia` (Domain Bible secao 19). */
+  mes?: number;
+  /**
+   * Custo mensal do(s) funcionario(s) CLT, rateado por dia (Domain Bible
+   * secao 20). Simplificacao do MVP: fica no tick do lote, nao num nivel
+   * de empresa separado — precisa migrar quando houver mais de um lote,
+   * para nao contar o custo em dobro.
+   */
+  custoMaoDeObraMensal?: number;
 }
 
 export interface ResultadoDiaLote {
@@ -55,6 +68,7 @@ export interface ResultadoDiaLote {
   receitaBruta: number;
   funrural: number;
   receitaLiquida: number;
+  custoMaoDeObra: number;
   resultado: number;
 }
 
@@ -90,11 +104,16 @@ export function simularDiaLote(
   const racaoConsumidaKg = avesVivasFimDia * CONSUMO_DIARIO_KG[estagio];
   const custoRacao = racaoConsumidaKg * mercado.precoKgRacao;
 
+  const precoDuziaAjustado =
+    mercado.precoMedioDuzia * (mercado.mes ? multiplicadorSazonal(mercado.mes) : 1);
+
   const duziasProduzidas = ovosProduzidos / 12;
-  const receitaBruta = duziasProduzidas * mercado.precoMedioDuzia;
+  const receitaBruta = duziasProduzidas * precoDuziaAjustado;
   const aliquotaFunrural = mercado.aliquotaFunrural ?? ALIQUOTA_FUNRURAL_PADRAO;
   const funrural = receitaBruta * aliquotaFunrural;
   const receitaLiquida = receitaBruta - funrural;
+
+  const custoMaoDeObra = (mercado.custoMaoDeObraMensal ?? 0) / 30;
 
   const resultado: ResultadoDiaLote = {
     estagio,
@@ -107,7 +126,8 @@ export function simularDiaLote(
     receitaBruta,
     funrural,
     receitaLiquida,
-    resultado: receitaLiquida - custoRacao,
+    custoMaoDeObra,
+    resultado: receitaLiquida - custoRacao - custoMaoDeObra,
   };
 
   const loteAtualizado: LoteProducao = {

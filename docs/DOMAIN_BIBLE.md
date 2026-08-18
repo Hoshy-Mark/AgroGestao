@@ -41,9 +41,13 @@ Convenção de cada entrada:
 16. Venda consignada — um terceiro canal comercial
 17. Documentos fiscais por transação — a base da trilha de auditoria
 18. Modelo de domínio: `DocumentoFiscal` e trilha de auditoria
-19. Parâmetros consolidados para o motor de simulação
-20. Próximas entradas pendentes e itens descartados
-21. Fontes consultadas
+19. Sazonalidade de preço de venda
+20. Mão de obra
+21. Perecibilidade e armazenamento de ovos
+22. Sistema de criação e prêmio de preço
+23. Parâmetros consolidados para o motor de simulação
+24. Próximas entradas pendentes e itens descartados
+25. Fontes consultadas
 
 ---
 
@@ -268,12 +272,30 @@ comercial mais recorrente do início de jogo.
 
 **Definição real:** toda granja opera com uma taxa de mortalidade esperada por lote/ciclo,
 afetada por densidade de alojamento, ambiência (temperatura, ventilação), sanidade e manejo.
+**Sarcinelli et al. (2007)** — citado em *Research, Society and Development* v.11 n.1,
+e17611123811 (2022), estudo de viabilidade econômica de granja cage-free — estima mortalidade
+de **8% a 10% ao longo de toda a fase de produção** de poedeiras comerciais, numa fase de
+produção de referência de **72 semanas / 504 dias** (mais 20 dias de vazio sanitário entre
+lotes).
 
-**Fonte:** Revista Brasileira de Zootecnia (2009), estudo de densidade de alojamento em
-poedeiras Dekalb White; BNDES, *Avicultura de postura*.
+**Funcionamento prático:** distribuindo o ponto médio (9%) uniformemente sobre 504 dias,
+`taxa_mortalidade_diaria_base ≈ 9% / 504 ≈ 0,0179%/dia` (arredondado para 0,018%/dia no motor).
+Essa distribuição uniforme é uma simplificação — na vida real a mortalidade não é constante ao
+longo do ciclo: é maior nas primeiras semanas de postura e no fim do ciclo, conforme a "crise
+das 18–35 semanas" documentada em nutriNews. Uma curva de mortalidade por fase (análoga à curva
+de postura da seção 2.2) é candidata a v0.3 se o playtesting mostrar que o ciclo "sente"
+mortalidade demais no início ou de menos no fim.
 
-**Representação no jogo:** `taxa_mortalidade_base` diária por lote, modulada por um
-multiplicador de risco calculado a partir de `ambiencia`, `densidade` e `sanidade` (GDD §19).
+**Fonte:** Sarcinelli et al. (2007), citado em Research, Society and Development v.11 n.1,
+e17611123811 (2022), "Custos de produção de ovos em sistema cage-free"; nutriNews, "A crise das
+18 às 35 semanas em poedeiras comerciais" (contexto sobre distribuição não-uniforme); Revista
+Brasileira de Zootecnia (2009), estudo de densidade de alojamento em poedeiras Dekalb White;
+BNDES, *Avicultura de postura*.
+
+**Representação no jogo:** `taxa_mortalidade_base` diária por lote (hoje 0,018%/dia,
+uniforme — implementado em `packages/domain/src/engine/motorPostura.ts`), modulada por um
+multiplicador de risco calculado a partir de `ambiencia`, `densidade` e `sanidade` (GDD §19) —
+esse multiplicador ainda não está implementado, ver seção 24 (pendências).
 
 **Simplificação aplicada:** sem simulação de doenças específicas no MVP — mortalidade é taxa
 agregada, com eventos sanitários pontuais representando picos anormais.
@@ -1076,7 +1098,152 @@ de auditoria separada: a auditoria é uma *view* sobre os documentos já emitido
 
 ---
 
-## 19. Parâmetros consolidados para o motor de simulação (v0.3)
+## 19. Sazonalidade de preço de venda
+
+O preço do ovo no mercado brasileiro não é plano ao longo do ano — tem um padrão sazonal
+reconhecido, que faltava documentar para o `Mercado` (GDD §15) ter alguma variação além de
+choques de commodity (já cobertos na seção 10).
+
+**Definição real:** o Cepea/Esalq (referência de série histórica de preço agropecuário no
+Brasil, ligada à USP) registra alta sazonal de preço do ovo concentrada entre fevereiro e
+abril — coincidindo com a Quaresma católica, período em que parte dos consumidores substitui
+carne vermelha por ovo — e um vale sazonal em dezembro/janeiro, com queda de consumo e maior
+oferta pré-ano novo.
+
+**Funcionamento prático:** a intensidade da variação muda ano a ano (ex.: alta de 9,2% em
+fev/2026 vs. uma alta bem mais forte em mar/2023) — não é um percentual fixo repetível, é um
+padrão direcional. Caixas de 30 dúzias no atacado/produtor (Cepea) oscilaram entre R$89 e R$227
+ao longo de 2025–2026, o que equivale a R$2,97–7,57 por dúzia.
+
+**Fonte:** Cepea/Esalq, série histórica de preço de ovos (referência de mercado agropecuário
+mais citada no Brasil).
+
+**Representação no jogo:** um multiplicador mensal aplicado sobre `precoMedioDuzia`:
+
+| Mês | Multiplicador sugerido | Base real |
+| --- | --- | --- |
+| Jan | 0,85–0,90 | vale sazonal (férias escolares, menor poder de compra) |
+| Fev | 1,00–1,10 | início da alta (Quaresma + volta às aulas) |
+| Mar | 1,10–1,30 | pico (Quaresma/Páscoa — maior variação histórica do ano) |
+| Abr | 1,05–1,15 | Páscoa + cauda da Quaresma |
+| Mai–Nov | 0,95–1,05 | estável, sem padrão forte documentado |
+| Dez | 0,85–0,90 | vale sazonal (queda de consumo, alta oferta pré-ano novo) |
+
+**Simplificação aplicada:** ponto médio de cada faixa usado como valor fixo por mês simulado no
+MVP, sem variação estocástica ano a ano — a faixa fica registrada para quando o módulo de
+`Mercado` ganhar variação probabilística (GDD §15).
+
+**Impacto no gameplay:** cria uma janela de tempo real para negociar contratos e escoar
+estoque — vender fora do pico sazonal é uma decisão pior mesmo com a operação idêntica, o que
+empurra o jogador a planejar em vez de só reagir. Também dá contexto a por que dois contratos
+com o mesmo volume podem valer preços bem diferentes dependendo de quando foram fechados.
+
+---
+
+## 20. Mão de obra
+
+O modelo de dados já previa `Funcionario` (GDD §9, §11.5) com salário, mas faltava um número
+real para o cargo mais básico da operação: quem cuida do galpão no dia a dia.
+
+**Definição real:** o trabalhador de avicultura de postura tem classificação ocupacional
+própria — CBO 6233-10 ("Trabalhador na avicultura de postura") — com salário-base CLT na faixa
+de **R$1.800–2.550/mês**, conforme dados de admissão CAGED/eSocial de 2025–2026.
+
+**Funcionamento prático:** contratação CLT gera encargos trabalhistas adicionais ao salário
+nominal (INSS patronal, FGTS, 13º salário, férias) — o valor sourced acima é o salário direto,
+não o custo total do empregador, que na prática é maior.
+
+**Fonte:** CAGED/eSocial (classificação ocupacional CBO 6233-10, faixa salarial 2025–2026).
+
+**Representação no jogo:** uma `ContaPagar` mensal recorrente por `Funcionario` CLT, com valor
+de referência de R$2.000/mês (ponto de partida dentro da faixa sourced) para o funcionário
+veterano herdado (GDD §5, §12).
+
+**Simplificação aplicada:** valor único simplificado, sem detalhar encargos trabalhistas
+separadamente nem variação regional de salário. Diaristas/empreitada existem como forma real de
+contratação mas ficam fora do MVP como opção de reforço temporário, não como parte do estado
+inicial.
+
+**Impacto no gameplay:** mão de obra vira custo fixo recorrente que pesa mesmo em dias de baixa
+produção (reforça o Pilar 2 em ciclos ruins) e cria um piso de operação mínima viável — não dá
+para sobreviver só cortando ração indefinidamente. Acoplar a capacidade/experiência do
+funcionário a mortalidade e conversão alimentar é uma pendência registrada na seção 24.
+
+---
+
+## 21. Perecibilidade e armazenamento de ovos
+
+O `Estoque` de ovos (GDD §9, §11.4) hoje é tratado como se não tivesse prazo de validade — o
+que descreve mal um produto perecível e enfraquece a decisão de "vender agora vs. esperar
+preço melhor" que a sazonalidade (seção 19) acabou de criar.
+
+**Definição real:** ovos têm validade comercial limitada; a referência de prazo mais usada no
+varejo e na prática comercial brasileira para ovos frescos, sob refrigeração adequada, gira em
+torno de **30 dias** a partir da postura.
+
+**Fonte:** prática comercial e rotulagem de validade usual no varejo brasileiro — esta entrada
+é uma referência de mercado, não a citação de uma norma federal específica verificada; deve ser
+tratada como menos rigorosamente sourced que as demais entradas deste documento até uma fonte
+regulatória primária ser localizada e citada aqui.
+
+**Representação no jogo:** cada lote de ovos no `Estoque` acumula `diasEmEstoque`; a
+classificação/qualidade efetiva degrada progressivamente até o limite de 30 dias, após o qual o
+lote é baixado do `Estoque` como perda total:
+
+```
+dias_em_estoque > 0 e <= 30  →  classificacao_efetiva degrada linearmente ate o limite
+dias_em_estoque > 30         →  lote e descartado do Estoque (perda total)
+```
+
+**Simplificação aplicada:** degradação linear simplificada, sem diferenciar causas
+(temperatura, umidade, manuseio) nem embalagem — a fórmula acima ainda não está implementada em
+`packages/domain` (ver seção 24, pendências).
+
+**Impacto no gameplay:** obriga o jogador a girar o `Estoque` (vender ou negociar) em vez de
+acumular ovos esperando um preço melhor indefinidamente — dá custo real à indecisão comercial e
+conecta com a venda consignada (seção 16), que já lida com risco de produto não vendido.
+
+---
+
+## 22. Sistema de criação e prêmio de preço
+
+Faltava registrar que "poedeira" não é um sistema único — a forma de criação (convencional,
+caipira, orgânico) é uma decisão de posicionamento comercial real, não só um detalhe de manejo.
+
+**Definição real:** sistemas alternativos de criação certificados — caipira/free-range e
+orgânico — comandam prêmio de preço no mercado em relação ao sistema convencional (gaiola),
+refletindo maior custo de produção, menor densidade e diferenciação de produto perante o
+consumidor.
+
+**Funcionamento prático:** sistemas caipira tipicamente têm produtividade menor que o
+convencional (menos ovos por ave ao longo do ciclo), por conta de menor densidade de alojamento
+e maior gasto energético das aves em livre acesso a área externa; o orgânico soma a essas
+restrições o custo de certificação e de insumos/ração orgânicos, com produtividade ainda mais
+baixa. Faixas de referência já em uso para calibração: prêmio de preço de **+30–80%** (caipira)
+e **+100–200%** (orgânico) sobre o preço convencional; produtividade de **280–350 ovos/ave/ciclo**
+(caipira) e **250–320 ovos/ave/ciclo** (orgânico), abaixo da curva de postura convencional já
+documentada na seção 2.2.
+
+**Fonte:** faixas de mercado consolidadas em `docs/GAME_ECONOMY.md` (v0.2) durante a calibração
+deste sistema — ainda **sem uma fonte primária única citada aqui**; é uma pendência de sourcing,
+não um dado com a mesma robustez das demais entradas deste documento.
+
+**Representação no jogo:** um `tipoSistemaCriacao` (`CONVENCIONAL` | `CAIPIRA` | `ORGANICO`) por
+`UnidadeNegocio`/`Lote`, com multiplicadores de preço e de produtividade aplicados sobre a curva
+de postura padrão (seção 2.2) e sobre `precoMedioDuzia`.
+
+**Simplificação aplicada:** dois sistemas alternativos com multiplicadores fixos, sem simular
+processo de certificação, auditoria externa ou período de conversão orgânica (que na vida real
+leva tempo e custo antes do prêmio pleno valer).
+
+**Impacto no gameplay:** cria uma segunda dimensão de posicionamento comercial (volume/commodity
+vs. nicho/valor agregado), coerente com clientes de perfis diferentes já previstos no GDD §14.
+É deliberadamente um upgrade de médio prazo, não parte do estado inicial herdado — uma granja
+falida (GDD §5) não bancaria uma certificação.
+
+---
+
+## 23. Parâmetros consolidados para o motor de simulação (v0.3)
 
 | Parâmetro | Valor de referência | Seção |
 | --- | --- | --- |
@@ -1106,14 +1273,22 @@ de auditoria separada: a auditoria é uma *view* sobre os documentos já emitido
 | Funrural (alíquota simplificada sem Livro Caixa) | 20% sobre receita bruta | §13.3 |
 | Fórmula de acerto (IEP) | (Viabilidade × GPD) / (CA × 10) | §7.3 |
 | Tipos de `DocumentoFiscal` no MVP | 7 tipos (§18) | §17–18 |
+| Mortalidade diária base | ~0,018%/dia (9%/504 dias) | §4 |
+| Sazonalidade de preço — pico | +10% a +30% (fev–abr) | §19 |
+| Sazonalidade de preço — vale | -10% a -15% (dez–jan) | §19 |
+| Mão de obra — salário CLT (CBO 6233-10) | R$1.800–2.550/mês | §20 |
+| Prazo de validade do estoque de ovo | ~30 dias | §21 |
+| Prêmio de preço — caipira / orgânico | +30–80% / +100–200% | §22 (pendente de fonte primária) |
+| Produtividade — caipira / orgânico | 280–350 / 250–320 ovos/ave/ciclo | §22 (pendente de fonte primária) |
 
 > Estes valores são **ponto de partida para calibração**, não fórmulas finais — devem ser
-> ajustados durante o desenvolvimento da Game Economy v0.1 (GDD §30, item 2) e revisados
-> sempre que uma nova fonte primária for incorporada a este documento.
+> ajustados durante o desenvolvimento da Game Economy (GDD §30, item 2; hoje na v0.2, ver
+> `docs/GAME_ECONOMY.md`) e revisados sempre que uma nova fonte primária for incorporada a este
+> documento.
 
 ---
 
-## 20. Próximas entradas pendentes e itens descartados
+## 24. Próximas entradas pendentes e itens descartados
 
 ### Pendentes com valor real de gameplay
 
@@ -1125,6 +1300,21 @@ de auditoria separada: a auditoria é uma *view* sobre os documentos já emitido
   mas só vale a pena modelar como sistema próprio se/quando "ambiência" virar um investimento
   desagregado (ver nota abaixo). Até lá, é uma variação dentro do parâmetro já existente da
   curva por linhagem — não precisa de seção própria.
+- **Acoplar `capacidade_manejo` do `Funcionario` a mortalidade/CA** (§20) — hoje mão de obra só
+  entra como custo fixo recorrente, não como modificador de desempenho. Fecharia o loop entre
+  "contratar/treinar melhor" e resultado mensurável, análogo ao que ambiência faria do lado de
+  infraestrutura.
+- **Curva de mortalidade não-uniforme por fase** (§4) — a distribuição uniforme atual é uma
+  simplificação reconhecida; maior valor de gameplay viria de picos nas primeiras semanas de
+  postura e no fim do ciclo, tornando "chegar bem ao fim do lote" uma habilidade real do
+  jogador, não só sorte.
+- **Fórmula de degradação de estoque de ovo** (§21) — a regra (degrada linear até 30 dias,
+  descarte total depois) está descrita mas ainda não implementada em `packages/domain`; hoje o
+  `Estoque` de ovos não tem noção de tempo.
+- **Fonte primária para os multiplicadores de sistema de criação** (§22) — as faixas de prêmio
+  de preço e produtividade de caipira/orgânico vieram de uma síntese de mercado em
+  `docs/GAME_ECONOMY.md`, não de um estudo único citável. Vale revisitar antes de o sistema de
+  criação alternativo entrar em implementação de verdade.
 
 ### Descartado deliberadamente (avaliado e considerado gordura)
 
@@ -1159,7 +1349,13 @@ como um número fixo:
 
 ---
 
-## 21. Fontes consultadas
+## 25. Fontes consultadas
+
+**Mortalidade, sazonalidade, mão de obra (v0.2):**
+Sarcinelli et al. (2007), citado em Research, Society and Development v.11 n.1, e17611123811
+(2022), "Custos de produção de ovos em sistema cage-free"; nutriNews — "A crise das 18 às 35
+semanas em poedeiras comerciais"; Cepea/Esalq — série histórica de preço de ovos; CAGED/eSocial
+— classificação ocupacional CBO 6233-10 e faixa salarial 2025–2026.
 
 **Avicultura / produção:**
 Nutrimosaic — "Como funciona a avicultura de postura?"; BNDES — *Avicultura de postura:

@@ -52,6 +52,27 @@ describe("simularDiaLote", () => {
     expect(resultado.resultado).toBeLessThan(0); // so custo, sem receita
   });
 
+  it("aplica o multiplicador sazonal sobre a receita quando o mes e informado", () => {
+    const { resultado: semSazonalidade } = simularDiaLote(loteEmProducao, mercado);
+    const { resultado: marco } = simularDiaLote(loteEmProducao, {
+      ...mercado,
+      mes: 3, // pico sazonal (Domain Bible secao 19)
+    });
+
+    expect(marco.receitaBruta).toBeGreaterThan(semSazonalidade.receitaBruta);
+  });
+
+  it("desconta o custo de mao de obra diario quando informado", () => {
+    const { resultado: semCusto } = simularDiaLote(loteEmProducao, mercado);
+    const { resultado: comCusto } = simularDiaLote(loteEmProducao, {
+      ...mercado,
+      custoMaoDeObraMensal: 3000,
+    });
+
+    expect(comCusto.custoMaoDeObra).toBeCloseTo(100); // 3000 / 30
+    expect(comCusto.resultado).toBeCloseTo(semCusto.resultado - 100);
+  });
+
   it("aplica uma taxa de postura menor no inicio da postura do que no pico", () => {
     const loteInicioPostura: LoteProducao = {
       ...loteEmProducao,
