@@ -1,0 +1,29 @@
+// Schema inicial (Fase 0 - Fundacao, GDD secao 25).
+// Cobre apenas Empresa + estado consolidado. Demais entidades da secao 9
+// (UnidadeNegocio, Lote, Fornecedor, Cliente, Contrato, ...) entram
+// conforme cada sistema for modelado na Domain Bible (docs/DOMAIN_BIBLE.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Empresa {
+  id             String   @id @default(cuid())
+  nome           String
+  fundadaEm      DateTime @default(now())
+
+  caixa          Decimal  @default(0)
+  divida         Decimal  @default(0)
+  limiteCredito  Decimal  @default(0)
+  reputacao      Int      @default(40)
+  conhecimento   Int      @default(0)
+  diaAtual       Int      @default(0)
+
+  criadaEm       DateTime @default(now())
+  atualizadaEm   DateTime @updatedAt
+}

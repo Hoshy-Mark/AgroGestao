@@ -1,0 +1,126 @@
+.phone {
+  width: 100%;
+  max-width: 420px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 20px 20px 12px;
+}
+
+.empresaNome {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.caixa {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.subheader {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px 16px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.section {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.sectionTitle {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.visaoGeral {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.metrica {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.metricaLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.metricaValor {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.negocios {
+  display: flex;
+  gap: 12px;
+}
+
+.negocioCard {
+  flex: 1;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.negocioNome {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.negocioDetalhe {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.atividades {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.atividade {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.86rem;
+}
+
+.atividadeAlerta {
+  border-left: 3px solid var(--warning);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-around;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface-alt);
+  font-size: 1.2rem;
+}
