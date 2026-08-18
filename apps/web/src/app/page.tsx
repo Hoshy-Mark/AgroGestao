@@ -1,4 +1,5 @@
 import { criarEmpresaHerdada } from "@agrogestao/domain";
+import { AppShell } from "@/components/AppShell";
 import styles from "./page.module.css";
 
 // Placeholder ate a tela conversar com a API (apps/api). Por enquanto usa o
@@ -18,72 +19,137 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
+const kpis = [
+  { label: "Receita (mês)", valor: "—", tom: "neutro" as const },
+  { label: "Custos (mês)", valor: "—", tom: "neutro" as const },
+  { label: "Lucro (mês)", valor: "—", tom: "neutro" as const },
+  { label: "Dívida", valor: formatoMoeda.format(empresa.estado.divida), tom: "alerta" as const },
+];
+
+const negocios = [
+  {
+    nome: "Poedeira Comercial",
+    fase: "Produção",
+    aves: 1500,
+    capacidade: 2000,
+    detalhe: "Taxa de postura 85% · conversão a apurar",
+  },
+  {
+    nome: "Matriz",
+    fase: "Não implantada",
+    aves: 0,
+    capacidade: 0,
+    detalhe: "Requer investimento inicial",
+  },
+];
+
+const atividades = [
+  { icone: "⚠", texto: "Estoque de ração acaba em 7 dias", severidade: "alerta" as const },
+  { icone: "💰", texto: "Parcela do financiamento herdado vence amanhã", severidade: "neutro" as const },
+  { icone: "🚚", texto: "Entrega para Mercado São José às 08:00", severidade: "neutro" as const },
+  { icone: "📋", texto: "Contrato herdado vence em 12 dias", severidade: "info" as const },
+];
+
 export default function DashboardPage() {
   return (
-    <main className={styles.phone}>
-      <header className={styles.header}>
-        <span className={styles.empresaNome}>{empresa.nome}</span>
-        <span className={styles.caixa}>
-          {formatoMoeda.format(empresa.estado.caixa)}
-        </span>
-      </header>
-      <div className={styles.subheader}>
-        <span>Conhecimento {empresa.estado.conhecimento}</span>
-        <span>Dia {empresa.estado.diaAtual}</span>
+    <AppShell
+      empresaNome={empresa.nome}
+      dia={empresa.estado.diaAtual}
+      caixa={formatoMoeda.format(empresa.estado.caixa)}
+      reputacao={empresa.estado.reputacao}
+      conhecimento={empresa.estado.conhecimento}
+    >
+      <section className={styles.mentorCard}>
+        <div className={styles.mentorAvatar}>👴</div>
+        <div className={styles.mentorFala}>
+          <div className={styles.mentorNome}>Seu Osvaldo · funcionário veterano</div>
+          <p>
+            “Seu avô sempre comprava a ração da mesma empresa. Quer que eu faça o
+            pedido, ou prefere ver se tem coisa melhor no mercado primeiro?”
+          </p>
+        </div>
+        <button className={styles.mentorAcao} type="button">
+          Decidir
+        </button>
+      </section>
+
+      <section>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Visão geral</h2>
+          <span className={styles.sectionHint}>Como estou?</span>
+        </div>
+        <div className={styles.kpiGrid}>
+          {kpis.map((kpi) => (
+            <div key={kpi.label} className={styles.kpiCard} data-tom={kpi.tom}>
+              <div className={styles.kpiLabel}>{kpi.label}</div>
+              <div className={styles.kpiValor}>{kpi.valor}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className={styles.grid2}>
+        <section>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Negócios</h2>
+            <span className={styles.sectionHint}>O que posso fazer depois?</span>
+          </div>
+          <div className={styles.negociosStack}>
+            {negocios.map((n) => (
+              <div key={n.nome} className={styles.negocioCard}>
+                <div className={styles.negocioTopo}>
+                  <span className={styles.negocioNome}>{n.nome}</span>
+                  <span className={styles.negocioFase}>{n.fase}</span>
+                </div>
+                {n.capacidade > 0 && (
+                  <>
+                    <div className={styles.barTrack}>
+                      <div
+                        className={styles.barFill}
+                        style={{ width: `${(n.aves / n.capacidade) * 100}%` }}
+                      />
+                    </div>
+                    <div className={styles.negocioCapacidade}>
+                      {n.aves.toLocaleString("pt-BR")} / {n.capacidade.toLocaleString("pt-BR")} aves
+                    </div>
+                  </>
+                )}
+                <div className={styles.negocioDetalhe}>{n.detalhe}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Próximas atividades</h2>
+            <span className={styles.sectionHint}>O que preciso fazer?</span>
+          </div>
+          <div className={styles.atividades}>
+            {atividades.map((a) => (
+              <div
+                key={a.texto}
+                className={styles.atividade}
+                data-severidade={a.severidade}
+              >
+                <span className={styles.atividadeIcone}>{a.icone}</span>
+                <span>{a.texto}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
-      <section className={styles.section}>
-        <div className={styles.sectionTitle}>Visão geral</div>
-        <div className={styles.visaoGeral}>
-          <div className={styles.metrica}>
-            <div className={styles.metricaLabel}>Receita</div>
-            <div className={styles.metricaValor}>—</div>
-          </div>
-          <div className={styles.metrica}>
-            <div className={styles.metricaLabel}>Custos</div>
-            <div className={styles.metricaValor}>—</div>
-          </div>
-          <div className={styles.metrica}>
-            <div className={styles.metricaLabel}>Lucro</div>
-            <div className={styles.metricaValor}>—</div>
+      <section className={styles.codexTeaser}>
+        <span className={styles.codexIcone}>📖</span>
+        <div>
+          <div className={styles.codexTitulo}>Novo conceito no Codex</div>
+          <div className={styles.codexTexto}>
+            Capital de giro — a diferença entre pagar seus fornecedores e receber
+            dos seus clientes pode te deixar sem caixa mesmo dando lucro.
           </div>
         </div>
       </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionTitle}>Negócios</div>
-        <div className={styles.negocios}>
-          <div className={styles.negocioCard}>
-            <div className={styles.negocioNome}>Matriz</div>
-            <div className={styles.negocioDetalhe}>não implantada</div>
-          </div>
-          <div className={styles.negocioCard}>
-            <div className={styles.negocioNome}>Poedeira</div>
-            <div className={styles.negocioDetalhe}>1 lote em produção</div>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionTitle}>Próximas atividades</div>
-        <div className={styles.atividades}>
-          <div className={`${styles.atividade} ${styles.atividadeAlerta}`}>
-            ⚠ Ração acabando em breve
-          </div>
-          <div className={styles.atividade}>💰 Financiamento herdado — parcela do mês</div>
-          <div className={styles.atividade}>🚚 Entrega ao cliente herdado</div>
-        </div>
-      </section>
-
-      <div className={styles.spacer} />
-
-      <nav className={styles.nav}>
-        <span>🏠</span>
-        <span>🏢</span>
-        <span>💰</span>
-        <span>📊</span>
-        <span>☰</span>
-      </nav>
-    </main>
+    </AppShell>
   );
 }
