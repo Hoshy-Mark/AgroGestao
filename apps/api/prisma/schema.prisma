@@ -1,7 +1,8 @@
-// Schema inicial (Fase 0 - Fundacao, GDD secao 25).
-// Cobre apenas Empresa + estado consolidado. Demais entidades da secao 9
-// (UnidadeNegocio, Lote, Fornecedor, Cliente, Contrato, ...) entram
-// conforme cada sistema for modelado na Domain Bible (docs/DOMAIN_BIBLE.md).
+// Fase 1 - primeira fatia vertical (GDD secao 25): Empresa -> UnidadeNegocio
+// -> Lote, o suficiente para o endpoint de "avancar dia" rodar o
+// MotorPostura de verdade (packages/domain) e persistir o resultado.
+// Fornecedor, Cliente, Contrato e DocumentoFiscal entram conforme os
+// modulos de Compras/Comercial/Fiscal forem implementados na API.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,18 +13,56 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Espelha 1:1 o EstadoEmpresa de packages/domain/src/entities/empresa.ts.
+// Campos financeiros em Float (nao Decimal) por simplicidade do MVP —
+// precisao decimal exata so importa quando o Financeiro/DRE (GDD secao 11.1)
+// virar sistema jogavel de verdade; ate la e atrito de tipo sem ganho.
 model Empresa {
-  id             String   @id @default(cuid())
+  id            String   @id @default(cuid())
+  nome          String
+  fundadaEm     DateTime @default(now())
+
+  caixa         Float    @default(0)
+  divida        Float    @default(0)
+  limiteCredito Float    @default(0)
+  reputacao     Int      @default(40)
+  conhecimento  Int      @default(0)
+  diaAtual      Int      @default(0)
+
+  unidadesNegocio UnidadeNegocio[]
+
+  criadaEm     DateTime @default(now())
+  atualizadaEm DateTime @updatedAt
+}
+
+// Espelha UnidadeNegocio de packages/domain/src/entities/producao.ts.
+model UnidadeNegocio {
+  id             String  @id @default(cuid())
+  empresaId      String
+  empresa        Empresa @relation(fields: [empresaId], references: [id])
   nome           String
-  fundadaEm      DateTime @default(now())
+  /// "matriz" | "poedeira" (packages/domain: UnidadeNegocio["tipo"])
+  tipo           String
+  capacidadeAves Int
 
-  caixa          Decimal  @default(0)
-  divida         Decimal  @default(0)
-  limiteCredito  Decimal  @default(0)
-  reputacao      Int      @default(40)
-  conhecimento   Int      @default(0)
-  diaAtual       Int      @default(0)
+  lotes Lote[]
 
-  criadaEm       DateTime @default(now())
-  atualizadaEm   DateTime @updatedAt
+  criadaEm DateTime @default(now())
+}
+
+// Espelha LoteProducao de packages/domain/src/entities/producao.ts. Estagio
+// (RECRIA/PRODUCAO/...) e derivado de idadeDias em runtime pelo dominio, nao
+// persistido — evita o lote e o estagio ficarem dessincronizados no banco.
+model Lote {
+  id                     String         @id @default(cuid())
+  unidadeNegocioId       String
+  unidadeNegocio         UnidadeNegocio @relation(fields: [unidadeNegocioId], references: [id])
+  /// "branca" | "vermelha" (packages/domain: Linhagem)
+  linhagem               String
+  quantidadeAvesAlojadas Int
+  quantidadeAvesVivas    Int
+  idadeDias              Int            @default(0)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }
