@@ -1,43 +1,79 @@
 import { describe, expect, it } from "vitest";
 import {
   avancarDiaEmpresa,
+  calcularConversaoAlimentar,
   criarEmpresaHerdada,
-  simularDiaProducao,
+  simularDiaLote,
   type LoteProducao,
 } from "../src/index.js";
 
-const loteBase: LoteProducao = {
+const loteEmProducao: LoteProducao = {
   id: "lote-1",
   unidadeNegocioId: "unidade-1",
-  fase: "producao",
-  quantidadeAves: 1500,
-  taxaPostura: 0.85,
-  consumoRacaoKgAveDia: 0.11,
-  iniciadoEm: "2026-01-01",
+  linhagem: "branca",
+  quantidadeAvesAlojadas: 1500,
+  quantidadeAvesVivas: 1500,
+  idadeDias: 27 * 7, // 27 semanas: dentro do pico de postura (24-30 sem.)
 };
 
-describe("simularDiaProducao", () => {
-  it("calcula producao, custo e receita do dia a partir do lote e do mercado", () => {
-    const resultado = simularDiaProducao(loteBase, {
-      precoKgRacao: 1.8,
-      precoMedioOvo: 0.35,
-    });
+const mercado = { precoKgRacao: 1.8, precoMedioDuzia: 4.2 };
 
-    expect(resultado.ovosProduzidos).toBeCloseTo(1275); // 1500 * 0.85
-    expect(resultado.racaoConsumidaKg).toBeCloseTo(165); // 1500 * 0.11
-    expect(resultado.custoRacao).toBeCloseTo(297); // 165 * 1.8
-    expect(resultado.receita).toBeCloseTo(446.25); // 1275 * 0.35
-    expect(resultado.resultado).toBeCloseTo(149.25);
-  });
+describe("simularDiaLote", () => {
+  it("calcula estagio, mortalidade, producao e resultado financeiro do dia", () => {
+    const { lote, resultado } = simularDiaLote(loteEmProducao, mercado);
 
-  it("nao produz ovos quando o lote ainda esta em recria", () => {
-    const resultado = simularDiaProducao(
-      { ...loteBase, fase: "recria" },
-      { precoKgRacao: 1.8, precoMedioOvo: 0.35 }
+    expect(resultado.estagio).toBe("PRODUCAO");
+    expect(resultado.avesMortasHoje).toBeGreaterThanOrEqual(0);
+    expect(resultado.avesVivasFimDia).toBe(1500 - resultado.avesMortasHoje);
+    expect(resultado.ovosProduzidos).toBeGreaterThan(0);
+    expect(resultado.racaoConsumidaKg).toBeCloseTo(
+      resultado.avesVivasFimDia * 0.112
+    );
+    expect(resultado.funrural).toBeCloseTo(resultado.receitaBruta * 0.013);
+    expect(resultado.receitaLiquida).toBeCloseTo(
+      resultado.receitaBruta - resultado.funrural
+    );
+    expect(resultado.resultado).toBeCloseTo(
+      resultado.receitaLiquida - resultado.custoRacao
     );
 
+    // envelhece um dia e reflete a mortalidade aplicada
+    expect(lote.idadeDias).toBe(loteEmProducao.idadeDias + 1);
+    expect(lote.quantidadeAvesVivas).toBe(resultado.avesVivasFimDia);
+  });
+
+  it("nao produz ovos enquanto o lote esta em recria (< 17 semanas)", () => {
+    const loteJovem: LoteProducao = { ...loteEmProducao, idadeDias: 10 * 7 };
+    const { resultado } = simularDiaLote(loteJovem, mercado);
+
+    expect(resultado.estagio).toBe("RECRIA");
     expect(resultado.ovosProduzidos).toBe(0);
     expect(resultado.racaoConsumidaKg).toBeGreaterThan(0); // ainda consome racao
+    expect(resultado.resultado).toBeLessThan(0); // so custo, sem receita
+  });
+
+  it("aplica uma taxa de postura menor no inicio da postura do que no pico", () => {
+    const loteInicioPostura: LoteProducao = {
+      ...loteEmProducao,
+      idadeDias: 18 * 7,
+    };
+    const { resultado: inicio } = simularDiaLote(loteInicioPostura, mercado);
+    const { resultado: pico } = simularDiaLote(loteEmProducao, mercado);
+
+    const taxaInicio = inicio.ovosProduzidos / inicio.avesVivasFimDia;
+    const taxaPico = pico.ovosProduzidos / pico.avesVivasFimDia;
+
+    expect(taxaInicio).toBeLessThan(taxaPico);
+  });
+});
+
+describe("calcularConversaoAlimentar", () => {
+  it("retorna kg de racao por duzia produzida", () => {
+    expect(calcularConversaoAlimentar(135, 120)).toBeCloseTo(13.5); // 120 ovos = 10 duzias
+  });
+
+  it("retorna null quando nao ha duzias produzidas ainda (ex.: lote em recria)", () => {
+    expect(calcularConversaoAlimentar(50, 0)).toBeNull();
   });
 });
 
@@ -51,14 +87,10 @@ describe("avancarDiaEmpresa", () => {
       fundadaEm: "2026-01-01",
     });
 
-    const resultadoDia = simularDiaProducao(loteBase, {
-      precoKgRacao: 1.8,
-      precoMedioOvo: 0.35,
-    });
+    const { resultado } = simularDiaLote(loteEmProducao, mercado);
+    const novoEstado = avancarDiaEmpresa(empresa.estado, resultado);
 
-    const novoEstado = avancarDiaEmpresa(empresa.estado, resultadoDia);
-
-    expect(novoEstado.caixa).toBeCloseTo(8000 + resultadoDia.resultado);
+    expect(novoEstado.caixa).toBeCloseTo(8000 + resultado.resultado);
     expect(novoEstado.diaAtual).toBe(1);
   });
 });

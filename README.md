@@ -8,7 +8,7 @@ Simulador de gestão agroindustrial — o jogador herda uma pequena propriedade 
 
 ## Status
 
-**Fase 0 — Fundação** (ver [roadmap](./docs/GDD.md#25-roadmap-de-desenvolvimento-e-prioridades)): estrutura do monorepo, motor de simulação inicial (`MotorPostura`), API mínima e dashboard mockado. Nenhuma regra de negócio abaixo deve ser considerada final — todas dependem da [Domain Bible](./docs/DOMAIN_BIBLE.md) ser preenchida com dados reais.
+**Fase 0 — Fundação** (ver [roadmap](./docs/GDD.md#25-roadmap-de-desenvolvimento-e-prioridades)): estrutura do monorepo, API mínima e dashboard mockado. A [Domain Bible](./docs/DOMAIN_BIBLE.md) já está preenchida com regras reais (fontes citadas por seção), e o `MotorPostura` foi atualizado para usá-las: curva de postura por idade/linhagem, consumo por estágio do lote, Funrural sobre a receita. Um módulo de `DocumentoFiscal` (trilha de auditoria) também já existe no domínio, ainda não ligado a compras/vendas reais. O que na Domain Bible ainda não tem número sourced (ex.: taxa de mortalidade) está explicitamente marcado como placeholder de calibração — ver [docs/GAME_ECONOMY.md §2 e §4](./docs/GAME_ECONOMY.md).
 
 ## Estrutura
 
@@ -48,10 +48,10 @@ npm run dev:api
 
 Ver [docs/GDD.md#30](./docs/GDD.md#30-próxima-etapa-recomendada):
 
-1. Preencher a Domain Bible com as regras reais da avicultura de postura.
-2. Fechar a Game Economy v0.1 (capital inicial, custos, receitas, prazos).
-3. Especificar o tick diário/semanal da simulação.
-4. Primeiro vertical slice jogável: herança → prólogo → operação → produção → venda → recebimento → fechamento.
+1. ~~Preencher a Domain Bible com as regras reais da avicultura de postura.~~ Feito — ver [docs/DOMAIN_BIBLE.md](./docs/DOMAIN_BIBLE.md).
+2. Fechar os números que ainda faltam na Game Economy (mortalidade, preço de ração/ovo — ver [docs/GAME_ECONOMY.md §4](./docs/GAME_ECONOMY.md)).
+3. Ligar o `MotorPostura` ao estado da empresa via API/Prisma (hoje só roda em memória, via testes e num placeholder no dashboard).
+4. Primeiro vertical slice jogável: herança → prólogo → operação → produção → venda → recebimento → fechamento — incluindo emitir `DocumentoFiscal` a cada transação real.
 5. Evoluir as demais telas (Negócios, Financeiro, Comercial, Mercado) no mesmo estilo do dashboard.
 
 ## Licença
