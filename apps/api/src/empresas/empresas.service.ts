@@ -3,6 +3,10 @@ import { Injectable } from "@nestjs/common";
 import { criarEmpresaHerdada } from "@agrogestao/domain";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { CriarEmpresaDto } from "./dto/criar-empresa.dto.js";
+import { agregarHistorico } from "./historico-agregado.js";
+
+/** "Mes" simulado = ultimos 30 dias avancados, nao um mes de calendario real. */
+const DIAS_MES_SIMULADO = 30;
 
 @Injectable()
 export class EmpresasService {
@@ -44,5 +48,24 @@ export class EmpresasService {
       where: { id },
       include: { unidadesNegocio: { include: { lotes: true } } },
     });
+  }
+
+  /**
+   * Resumo do "mes" (ultimos DIAS_MES_SIMULADO dias avancados, nao um mes de
+   * calendario real) a partir do HistoricoProducao de todos os lotes da
+   * empresa — a base do DRE (GDD secao 21.4).
+   */
+  async buscarHistoricoMensal(empresaId: string) {
+    const registros = await this.prisma.historicoProducao.findMany({
+      where: { lote: { unidadeNegocio: { empresaId } } },
+      orderBy: { dia: "asc" },
+    });
+
+    const ultimoPeriodo = registros.slice(-DIAS_MES_SIMULADO);
+
+    return {
+      ...agregarHistorico(ultimoPeriodo),
+      registros: ultimoPeriodo,
+    };
   }
 }

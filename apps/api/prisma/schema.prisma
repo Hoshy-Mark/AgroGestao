@@ -63,6 +63,33 @@ model Lote {
   quantidadeAvesVivas    Int
   idadeDias              Int            @default(0)
 
+  historico HistoricoProducao[]
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+}
+
+// Um registro por dia simulado avancado (GDD secao 9: HistoricoProducao).
+// E a base do DRE/relatorios (GDD secao 21.4) — sem isso "Receita/Custos do
+// mes" nao existe, so o resultado do ultimo tick.
+model HistoricoProducao {
+  id     String @id @default(cuid())
+  loteId String
+  lote   Lote   @relation(fields: [loteId], references: [id])
+
+  /// diaAtual da empresa no momento deste tick (packages/domain: EstadoEmpresa.diaAtual)
+  dia              Int
+  /// EstagioLote (packages/domain), string por simplicidade do MVP
+  estagio          String
+  ovosProduzidos   Float
+  racaoConsumidaKg Float
+  custoRacao       Float
+  receitaBruta     Float
+  funrural         Float
+  custoMaoDeObra   Float
+  resultado        Float
+
+  criadoEm DateTime @default(now())
+
+  @@index([loteId, dia])
 }

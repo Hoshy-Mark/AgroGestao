@@ -20,4 +20,9 @@ export class EmpresasController {
   buscarPorId(@Param("id") id: string) {
     return this.empresasService.buscarPorId(id);
   }
+
+  @Get(":id/historico")
+  buscarHistoricoMensal(@Param("id") id: string) {
+    return this.empresasService.buscarHistoricoMensal(id);
+  }
 }

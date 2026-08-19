@@ -6,7 +6,13 @@ import {
   idadeEmSemanas,
   type EstagioLote,
 } from "@agrogestao/domain";
-import { ApiError, buscarEmpresa, type EmpresaApi } from "@/lib/api";
+import {
+  ApiError,
+  buscarEmpresa,
+  buscarHistoricoMensal,
+  type EmpresaApi,
+  type HistoricoMensalApi,
+} from "@/lib/api";
 import { AppShell } from "@/components/AppShell";
 import { avancarDia } from "./actions";
 import styles from "./page.module.css";
@@ -136,19 +142,31 @@ function paraNegocios(empresa: EmpresaApi): NegocioResumo[] {
 async function carregarEmpresa(): Promise<{
   empresa: EmpresaResumo;
   negocios: NegocioResumo[];
+  historico: HistoricoMensalApi | null;
   conectadoApi: boolean;
   erroApi?: string;
 }> {
   const empresaId = (await cookies()).get("empresaId")?.value;
   if (!empresaId) {
-    return { empresa: empresaMock(), negocios: negociosMock, conectadoApi: false };
+    return {
+      empresa: empresaMock(),
+      negocios: negociosMock,
+      historico: null,
+      conectadoApi: false,
+    };
   }
 
   try {
-    const empresa = await buscarEmpresa(empresaId);
+    // historico e "nice to have": se falhar sozinho, a tela ainda funciona
+    // com os totais do mes em branco, em vez de derrubar o dashboard inteiro.
+    const [empresa, historico] = await Promise.all([
+      buscarEmpresa(empresaId),
+      buscarHistoricoMensal(empresaId).catch(() => null),
+    ]);
     return {
       empresa: paraResumo(empresa),
       negocios: paraNegocios(empresa),
+      historico,
       conectadoApi: true,
     };
   } catch (erro) {
@@ -156,6 +174,7 @@ async function carregarEmpresa(): Promise<{
     return {
       empresa: empresaMock(),
       negocios: negociosMock,
+      historico: null,
       conectadoApi: false,
       erroApi: mensagem,
     };
@@ -180,33 +199,32 @@ const atividades = [
 ];
 
 export default async function DashboardPage() {
-  const [{ empresa, negocios, conectadoApi, erroApi }, ultimoResultado] = await Promise.all([
-    carregarEmpresa(),
-    lerUltimoResultado(),
-  ]);
+  const [{ empresa, negocios, historico, conectadoApi, erroApi }, ultimoResultado] =
+    await Promise.all([carregarEmpresa(), lerUltimoResultado()]);
 
   const primeiroLoteId = negocios.find((n) => n.loteId)?.loteId ?? null;
   const avancarDiaComLote = primeiroLoteId ? avancarDia.bind(null, primeiroLoteId) : null;
 
+  const temHistorico = !!historico && historico.diasComRegistro > 0;
+  const sufixoPeriodo = historico
+    ? `(últ. ${historico.diasComRegistro} dia${historico.diasComRegistro === 1 ? "" : "s"})`
+    : "(mês)";
+
   const kpis = [
     {
-      label: "Receita (hoje)",
-      valor: ultimoResultado ? formatoMoedaPrecisa.format(ultimoResultado.receitaBruta) : "—",
+      label: `Receita ${sufixoPeriodo}`,
+      valor: temHistorico ? formatoMoedaPrecisa.format(historico!.receitaTotal) : "—",
       tom: "neutro" as const,
     },
     {
-      label: "Custos (hoje)",
-      valor: ultimoResultado
-        ? formatoMoedaPrecisa.format(
-            ultimoResultado.custoRacao + ultimoResultado.custoMaoDeObra + ultimoResultado.funrural
-          )
-        : "—",
+      label: `Custos ${sufixoPeriodo}`,
+      valor: temHistorico ? formatoMoedaPrecisa.format(historico!.custoTotal) : "—",
       tom: "neutro" as const,
     },
     {
-      label: "Resultado (hoje)",
-      valor: ultimoResultado ? formatoMoedaPrecisa.format(ultimoResultado.resultado) : "—",
-      tom: ultimoResultado && ultimoResultado.resultado < 0 ? ("alerta" as const) : ("neutro" as const),
+      label: `Lucro ${sufixoPeriodo}`,
+      valor: temHistorico ? formatoMoedaPrecisa.format(historico!.resultadoTotal) : "—",
+      tom: temHistorico && historico!.resultadoTotal < 0 ? ("alerta" as const) : ("neutro" as const),
     },
     { label: "Dívida", valor: formatoMoeda.format(empresa.divida), tom: "alerta" as const },
   ];

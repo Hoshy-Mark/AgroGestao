@@ -107,6 +107,19 @@ export function buscarEmpresa(id: string) {
   return apiFetch<EmpresaApi>(`/empresas/${id}`);
 }
 
+export interface HistoricoMensalApi {
+  receitaTotal: number;
+  custoTotal: number;
+  resultadoTotal: number;
+  diasComRegistro: number;
+  registros: unknown[];
+}
+
+/** Resumo dos ultimos ~30 dias simulados avancados (nao um mes de calendario real) — base do DRE, GDD secao 21.4. */
+export function buscarHistoricoMensal(empresaId: string) {
+  return apiFetch<HistoricoMensalApi>(`/empresas/${empresaId}/historico`);
+}
+
 export function criarUnidadeNegocio(input: {
   empresaId: string;
   nome: string;

@@ -75,6 +75,20 @@ export class LotesService {
           diaAtual: empresaAtualizada.diaAtual,
         },
       }),
+      this.prisma.historicoProducao.create({
+        data: {
+          loteId,
+          dia: empresaEstado.diaAtual,
+          estagio: resultado.estagio,
+          ovosProduzidos: resultado.ovosProduzidos,
+          racaoConsumidaKg: resultado.racaoConsumidaKg,
+          custoRacao: resultado.custoRacao,
+          receitaBruta: resultado.receitaBruta,
+          funrural: resultado.funrural,
+          custoMaoDeObra: resultado.custoMaoDeObra,
+          resultado: resultado.resultado,
+        },
+      }),
     ]);
 
     return { lote: loteSalvo, empresa: empresaSalva, resultado };
