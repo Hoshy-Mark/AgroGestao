@@ -16,7 +16,7 @@ export class LotesService {
         linhagem: dto.linhagem,
         quantidadeAvesAlojadas: dto.quantidadeAvesAlojadas,
         quantidadeAvesVivas: dto.quantidadeAvesAlojadas,
-        idadeDias: 0,
+        idadeDias: dto.idadeDiasInicial ?? 0,
       },
     });
   }

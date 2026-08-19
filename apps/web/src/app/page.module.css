@@ -102,6 +102,12 @@
   background: var(--accent-strong);
 }
 
+.mentorAcao:disabled {
+  opacity: 0.5;
+  cursor: default;
+  background: var(--border-strong);
+}
+
 /* ---------- KPIs ---------- */
 
 .kpiGrid {

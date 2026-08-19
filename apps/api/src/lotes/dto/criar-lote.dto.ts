@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsString, Min, MinLength } from "class-validator";
+import { IsIn, IsInt, IsOptional, IsString, Min, MinLength } from "class-validator";
 
 export class CriarLoteDto {
   @IsString()
@@ -11,4 +11,10 @@ export class CriarLoteDto {
   @IsInt()
   @Min(1)
   quantidadeAvesAlojadas!: number;
+
+  /** Permite criar um lote que ja nasce em producao (ex.: heranca — GDD secao 5), em vez de sempre comecar do zero em RECRIA. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  idadeDiasInicial?: number;
 }

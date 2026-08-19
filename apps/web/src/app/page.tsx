@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { criarEmpresaHerdada } from "@agrogestao/domain";
+import {
+  criarEmpresaHerdada,
+  estagioPorIdadeSemanas,
+  idadeEmSemanas,
+  type EstagioLote,
+} from "@agrogestao/domain";
 import { ApiError, buscarEmpresa, type EmpresaApi } from "@/lib/api";
 import { AppShell } from "@/components/AppShell";
+import { avancarDia } from "./actions";
 import styles from "./page.module.css";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
@@ -11,6 +17,20 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
+const formatoMoedaPrecisa = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  maximumFractionDigits: 2,
+});
+
+const ESTAGIO_LABEL: Record<EstagioLote, string> = {
+  RECRIA: "Recria",
+  INICIO_POSTURA: "Início de postura",
+  PRODUCAO: "Produção",
+  DECLINIO: "Declínio",
+  DESCARTE: "Descarte",
+};
+
 interface EmpresaResumo {
   nome: string;
   diaAtual: number;
@@ -18,6 +38,26 @@ interface EmpresaResumo {
   divida: number;
   reputacao: number;
   conhecimento: number;
+}
+
+interface NegocioResumo {
+  loteId: string | null;
+  nome: string;
+  fase: string;
+  avesVivas: number;
+  capacidadeAves: number;
+  detalhe: string;
+}
+
+interface ResultadoDia {
+  estagio: string;
+  ovosProduzidos: number;
+  racaoConsumidaKg: number;
+  custoRacao: number;
+  receitaBruta: number;
+  funrural: number;
+  custoMaoDeObra: number;
+  resultado: number;
 }
 
 // Mock local — garante que a tela sempre renderiza algo coerente mesmo sem
@@ -40,6 +80,17 @@ function empresaMock(): EmpresaResumo {
   };
 }
 
+const negociosMock: NegocioResumo[] = [
+  {
+    loteId: null,
+    nome: "Poedeira Comercial",
+    fase: "Produção",
+    avesVivas: 1500,
+    capacidadeAves: 2000,
+    detalhe: "Taxa de postura 85% · conversão a apurar",
+  },
+];
+
 function paraResumo(empresa: EmpresaApi): EmpresaResumo {
   return {
     nome: empresa.nome,
@@ -51,41 +102,75 @@ function paraResumo(empresa: EmpresaApi): EmpresaResumo {
   };
 }
 
+function paraNegocios(empresa: EmpresaApi): NegocioResumo[] {
+  const unidades = empresa.unidadesNegocio ?? [];
+  if (unidades.length === 0) return [];
+
+  return unidades.map((unidade) => {
+    const lote = unidade.lotes?.[0];
+    if (!lote) {
+      return {
+        loteId: null,
+        nome: unidade.nome,
+        fase: "Sem lote",
+        avesVivas: 0,
+        capacidadeAves: unidade.capacidadeAves,
+        detalhe: "Nenhum lote alojado ainda",
+      };
+    }
+
+    const idadeSemanas = idadeEmSemanas(lote.idadeDias);
+    const estagio = estagioPorIdadeSemanas(idadeSemanas);
+
+    return {
+      loteId: lote.id,
+      nome: unidade.nome,
+      fase: ESTAGIO_LABEL[estagio],
+      avesVivas: lote.quantidadeAvesVivas,
+      capacidadeAves: unidade.capacidadeAves,
+      detalhe: `${idadeSemanas.toFixed(0)} semanas de idade · linhagem ${lote.linhagem}`,
+    };
+  });
+}
+
 async function carregarEmpresa(): Promise<{
   empresa: EmpresaResumo;
+  negocios: NegocioResumo[];
   conectadoApi: boolean;
   erroApi?: string;
 }> {
   const empresaId = (await cookies()).get("empresaId")?.value;
   if (!empresaId) {
-    return { empresa: empresaMock(), conectadoApi: false };
+    return { empresa: empresaMock(), negocios: negociosMock, conectadoApi: false };
   }
 
   try {
     const empresa = await buscarEmpresa(empresaId);
-    return { empresa: paraResumo(empresa), conectadoApi: true };
+    return {
+      empresa: paraResumo(empresa),
+      negocios: paraNegocios(empresa),
+      conectadoApi: true,
+    };
   } catch (erro) {
     const mensagem = erro instanceof ApiError ? erro.message : "erro desconhecido";
-    return { empresa: empresaMock(), conectadoApi: false, erroApi: mensagem };
+    return {
+      empresa: empresaMock(),
+      negocios: negociosMock,
+      conectadoApi: false,
+      erroApi: mensagem,
+    };
   }
 }
 
-const negocios = [
-  {
-    nome: "Poedeira Comercial",
-    fase: "Produção",
-    aves: 1500,
-    capacidade: 2000,
-    detalhe: "Taxa de postura 85% · conversão a apurar",
-  },
-  {
-    nome: "Matriz",
-    fase: "Não implantada",
-    aves: 0,
-    capacidade: 0,
-    detalhe: "Requer investimento inicial",
-  },
-];
+async function lerUltimoResultado(): Promise<ResultadoDia | null> {
+  const bruto = (await cookies()).get("ultimoResultado")?.value;
+  if (!bruto) return null;
+  try {
+    return JSON.parse(bruto) as ResultadoDia;
+  } catch {
+    return null;
+  }
+}
 
 const atividades = [
   { icone: "⚠", texto: "Estoque de ração acaba em 7 dias", severidade: "alerta" as const },
@@ -95,12 +180,34 @@ const atividades = [
 ];
 
 export default async function DashboardPage() {
-  const { empresa, conectadoApi, erroApi } = await carregarEmpresa();
+  const [{ empresa, negocios, conectadoApi, erroApi }, ultimoResultado] = await Promise.all([
+    carregarEmpresa(),
+    lerUltimoResultado(),
+  ]);
+
+  const primeiroLoteId = negocios.find((n) => n.loteId)?.loteId ?? null;
+  const avancarDiaComLote = primeiroLoteId ? avancarDia.bind(null, primeiroLoteId) : null;
 
   const kpis = [
-    { label: "Receita (mês)", valor: "—", tom: "neutro" as const },
-    { label: "Custos (mês)", valor: "—", tom: "neutro" as const },
-    { label: "Lucro (mês)", valor: "—", tom: "neutro" as const },
+    {
+      label: "Receita (hoje)",
+      valor: ultimoResultado ? formatoMoedaPrecisa.format(ultimoResultado.receitaBruta) : "—",
+      tom: "neutro" as const,
+    },
+    {
+      label: "Custos (hoje)",
+      valor: ultimoResultado
+        ? formatoMoedaPrecisa.format(
+            ultimoResultado.custoRacao + ultimoResultado.custoMaoDeObra + ultimoResultado.funrural
+          )
+        : "—",
+      tom: "neutro" as const,
+    },
+    {
+      label: "Resultado (hoje)",
+      valor: ultimoResultado ? formatoMoedaPrecisa.format(ultimoResultado.resultado) : "—",
+      tom: ultimoResultado && ultimoResultado.resultado < 0 ? ("alerta" as const) : ("neutro" as const),
+    },
     { label: "Dívida", valor: formatoMoeda.format(empresa.divida), tom: "alerta" as const },
   ];
 
@@ -129,14 +236,33 @@ export default async function DashboardPage() {
         <div className={styles.mentorAvatar}>👴</div>
         <div className={styles.mentorFala}>
           <div className={styles.mentorNome}>Seu Osvaldo · funcionário veterano</div>
-          <p>
-            “Seu avô sempre comprava a ração da mesma empresa. Quer que eu faça o
-            pedido, ou prefere ver se tem coisa melhor no mercado primeiro?”
-          </p>
+          {ultimoResultado ? (
+            <p>
+              “Fechei o dia: coletamos {Math.round(ultimoResultado.ovosProduzidos)} ovos e
+              consumimos {ultimoResultado.racaoConsumidaKg.toFixed(1)} kg de ração
+              {ultimoResultado.resultado >= 0
+                ? ` — sobrou ${formatoMoedaPrecisa.format(ultimoResultado.resultado)} no caixa.`
+                : ` — o caixa saiu ${formatoMoedaPrecisa.format(Math.abs(ultimoResultado.resultado))} no vermelho hoje.`}
+              ”
+            </p>
+          ) : (
+            <p>
+              “Seu avô sempre comprava a ração da mesma empresa. Quer que eu faça o
+              pedido, ou prefere ver se tem coisa melhor no mercado primeiro?”
+            </p>
+          )}
         </div>
-        <button className={styles.mentorAcao} type="button">
-          Decidir
-        </button>
+        {avancarDiaComLote ? (
+          <form action={avancarDiaComLote}>
+            <button className={styles.mentorAcao} type="submit">
+              Avançar 1 dia
+            </button>
+          </form>
+        ) : (
+          <button className={styles.mentorAcao} type="button" disabled>
+            Decidir
+          </button>
+        )}
       </section>
 
       <section>
@@ -161,22 +287,25 @@ export default async function DashboardPage() {
             <span className={styles.sectionHint}>O que posso fazer depois?</span>
           </div>
           <div className={styles.negociosStack}>
+            {negocios.length === 0 && (
+              <div className={styles.negocioDetalhe}>Nenhum negócio ainda.</div>
+            )}
             {negocios.map((n) => (
               <div key={n.nome} className={styles.negocioCard}>
                 <div className={styles.negocioTopo}>
                   <span className={styles.negocioNome}>{n.nome}</span>
                   <span className={styles.negocioFase}>{n.fase}</span>
                 </div>
-                {n.capacidade > 0 && (
+                {n.capacidadeAves > 0 && (
                   <>
                     <div className={styles.barTrack}>
                       <div
                         className={styles.barFill}
-                        style={{ width: `${(n.aves / n.capacidade) * 100}%` }}
+                        style={{ width: `${(n.avesVivas / n.capacidadeAves) * 100}%` }}
                       />
                     </div>
                     <div className={styles.negocioCapacidade}>
-                      {n.aves.toLocaleString("pt-BR")} / {n.capacidade.toLocaleString("pt-BR")} aves
+                      {n.avesVivas.toLocaleString("pt-BR")} / {n.capacidadeAves.toLocaleString("pt-BR")} aves
                     </div>
                   </>
                 )}

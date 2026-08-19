@@ -123,6 +123,7 @@ export function criarLote(input: {
   unidadeNegocioId: string;
   linhagem: "branca" | "vermelha";
   quantidadeAvesAlojadas: number;
+  idadeDiasInicial?: number;
 }) {
   return apiFetch<LoteApi>("/lotes", {
     method: "POST",
