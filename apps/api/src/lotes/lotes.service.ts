@@ -5,6 +5,9 @@ import { aplicarTickLote } from "./lote-tick.js";
 import type { CriarLoteDto } from "./dto/criar-lote.dto.js";
 import type { AvancarDiaDto } from "./dto/avancar-dia.dto.js";
 
+/** Usado apenas enquanto a unidade nao escolheu um Fornecedor de racao (GDD secao 11.2). */
+const PRECO_KG_RACAO_PADRAO = 2.5;
+
 @Injectable()
 export class LotesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -33,7 +36,9 @@ export class LotesService {
   async avancarDia(loteId: string, mercado: AvancarDiaDto) {
     const loteDb = await this.prisma.lote.findUniqueOrThrow({
       where: { id: loteId },
-      include: { unidadeNegocio: { include: { empresa: true } } },
+      include: {
+        unidadeNegocio: { include: { empresa: true, fornecedorRacao: true } },
+      },
     });
     const empresaDb = loteDb.unidadeNegocio.empresa;
 
@@ -54,11 +59,19 @@ export class LotesService {
       diaAtual: empresaDb.diaAtual,
     };
 
+    // O preco de racao vem do Fornecedor escolhido pela unidade (GDD secao
+    // 11.2); so cai no valor de referencia se o jogador ainda nao escolheu
+    // nenhum, ou se quem chamou o endpoint sobrescreveu explicitamente.
+    const precoKgRacao =
+      mercado.precoKgRacao ??
+      loteDb.unidadeNegocio.fornecedorRacao?.precoKgRacao ??
+      PRECO_KG_RACAO_PADRAO;
+
     const {
       lote: loteAtualizado,
       empresaEstado: empresaAtualizada,
       resultado,
-    } = aplicarTickLote(loteDominio, empresaEstado, mercado);
+    } = aplicarTickLote(loteDominio, empresaEstado, { ...mercado, precoKgRacao });
 
     const [loteSalvo, empresaSalva] = await this.prisma.$transaction([
       this.prisma.lote.update({

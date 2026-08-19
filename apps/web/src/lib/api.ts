@@ -61,7 +61,18 @@ export interface UnidadeNegocioApi {
   nome: string;
   tipo: "matriz" | "poedeira";
   capacidadeAves: number;
+  fornecedorRacaoId: string | null;
+  fornecedorRacao?: FornecedorApi | null;
   lotes?: LoteApi[];
+}
+
+export interface FornecedorApi {
+  id: string;
+  nome: string;
+  precoKgRacao: number;
+  prazoPagamentoDias: number;
+  prazoEntregaDias: number;
+  confiabilidade: number;
 }
 
 export interface LoteApi {
@@ -120,6 +131,17 @@ export function buscarHistoricoMensal(empresaId: string) {
   return apiFetch<HistoricoMensalApi>(`/empresas/${empresaId}/historico`);
 }
 
+export function listarFornecedores() {
+  return apiFetch<FornecedorApi[]>("/fornecedores");
+}
+
+export function escolherFornecedorRacao(unidadeId: string, fornecedorId: string) {
+  return apiFetch<UnidadeNegocioApi>(`/unidades-negocio/${unidadeId}/fornecedor-racao`, {
+    method: "PATCH",
+    body: JSON.stringify({ fornecedorId }),
+  });
+}
+
 export function criarUnidadeNegocio(input: {
   empresaId: string;
   nome: string;
@@ -147,7 +169,8 @@ export function criarLote(input: {
 export function avancarDiaLote(
   loteId: string,
   mercado: {
-    precoKgRacao: number;
+    /** Se omitido, a API usa o Fornecedor escolhido pela unidade (ver /mercado), com fallback pro preco de referencia. */
+    precoKgRacao?: number;
     precoMedioDuzia: number;
     mes?: number;
     custoMaoDeObraMensal?: number;

@@ -6,23 +6,23 @@ import { revalidatePath } from "next/cache";
 import { avancarDiaLote } from "@/lib/api";
 
 /**
- * Precos de referencia ate existir um modulo de Mercado de verdade (GDD
- * secao 15): racao ~R$2,50/kg (estimativa derivada, GAME_ECONOMY.md secao
- * 3) e ovo no ponto medio da faixa Cepea R$3,00-7,50/duzia (GAME_ECONOMY.md
- * secao 5). Fixos por enquanto — nao ha fornecedor/cliente para negociar.
+ * Preco de venda de referencia ate existir Cliente/Contrato de verdade (GDD
+ * secao 15/16): ponto medio da faixa Cepea R$3,00-7,50/duzia
+ * (GAME_ECONOMY.md secao 5). O preco de racao NAO entra mais aqui — o
+ * servico deriva do Fornecedor escolhido pela unidade em /mercado,
+ * com fallback pro preco de referencia se nenhum foi escolhido ainda.
  */
-const PRECO_KG_RACAO_REFERENCIA = 2.5;
 const PRECO_MEDIO_DUZIA_REFERENCIA = 4.5;
 
 /**
  * Roda um dia do MotorPostura sobre o lote (via API) e guarda o resultado
- * numa cookie de vida curta so pra mostrar "o que aconteceu hoje" logo
- * depois do redirect — sem precisar de um HistoricoProducao persistido
- * ainda (GDD secao 9, pendente).
+ * numa cookie de vida curta so pra narrar "o que aconteceu hoje" logo
+ * depois do redirect — o HistoricoProducao persistido (GDD secao 9) ja
+ * existe e alimenta os KPIs do periodo; a cookie e so o feedback imediato
+ * do ultimo clique.
  */
 export async function avancarDia(loteId: string) {
   const resposta = await avancarDiaLote(loteId, {
-    precoKgRacao: PRECO_KG_RACAO_REFERENCIA,
     precoMedioDuzia: PRECO_MEDIO_DUZIA_REFERENCIA,
   });
 

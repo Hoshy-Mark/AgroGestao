@@ -1,13 +1,17 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import styles from "./AppShell.module.css";
 
 const NAV_ITEMS = [
-  { icon: "🏠", label: "Visão Geral", active: true },
-  { icon: "🐔", label: "Negócios" },
-  { icon: "💰", label: "Financeiro" },
-  { icon: "🤝", label: "Comercial" },
-  { icon: "📈", label: "Mercado" },
-  { icon: "📊", label: "Relatórios" },
-  { icon: "📖", label: "Codex" },
+  { icon: "🏠", label: "Visão Geral", href: "/" },
+  { icon: "🐔", label: "Negócios", href: "/negocios" },
+  { icon: "💰", label: "Financeiro", href: "/financeiro" },
+  { icon: "🤝", label: "Comercial", href: "/comercial" },
+  { icon: "📈", label: "Mercado", href: "/mercado" },
+  { icon: "📊", label: "Relatórios", href: "/relatorios" },
+  { icon: "📖", label: "Codex", href: "/codex" },
 ];
 
 const SPEEDS = ["⏸", "1x", "2x", "4x", "8x"];
@@ -27,6 +31,8 @@ export function AppShell({
   conhecimento: number;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -36,17 +42,18 @@ export function AppShell({
         </div>
         <nav className={styles.nav}>
           {NAV_ITEMS.map((item) => (
-            <div
-              key={item.label}
-              className={`${styles.navItem} ${item.active ? styles.navItemActive : ""}`}
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`${styles.navItem} ${pathname === item.href ? styles.navItemActive : ""}`}
             >
               <span className={styles.navIcon}>{item.icon}</span>
               <span>{item.label}</span>
-            </div>
+            </Link>
           ))}
         </nav>
         <div className={styles.navFooter}>
-          Fase 0 — Fundação
+          Fase 1 — Vertical slice
           <br />
           v0.1.0
         </div>
@@ -65,6 +72,8 @@ export function AppShell({
                 key={s}
                 className={`${styles.speedBtn} ${i === 1 ? styles.speedBtnActive : ""}`}
                 type="button"
+                disabled
+                title="Controles de velocidade ainda não fazem nada — o tempo avança pelo botão Avançar dia"
               >
                 {s}
               </button>

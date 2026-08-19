@@ -2,14 +2,14 @@ import { IsNumber, IsOptional, Max, Min } from "class-validator";
 
 /**
  * Parametros de mercado do dia simulado — espelha ParametrosMercadoDia de
- * packages/domain/src/engine/motorPostura.ts. Sem valores-padrao de servidor
- * de proposito: o Mercado (GDD secao 15) ainda nao existe como sistema, entao
- * hoje quem decide preco/mes/custo e quem chama o endpoint.
+ * packages/domain/src/engine/motorPostura.ts.
  */
 export class AvancarDiaDto {
+  /** Opcional: se omitido, o servico usa o Fornecedor de racao escolhido pela unidade (GDD secao 11.2), com fallback pro preco de referencia. */
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  precoKgRacao!: number;
+  precoKgRacao?: number;
 
   @IsNumber()
   @Min(0)

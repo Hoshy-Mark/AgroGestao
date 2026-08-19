@@ -45,9 +45,30 @@ model UnidadeNegocio {
   tipo           String
   capacidadeAves Int
 
+  /// Fornecedor de racao escolhido (GDD secao 11.2) — null ate o jogador decidir; o motor usa um preco de referencia enquanto isso.
+  fornecedorRacaoId String?
+  fornecedorRacao   Fornecedor? @relation(fields: [fornecedorRacaoId], references: [id])
+
   lotes Lote[]
 
   criadaEm DateTime @default(now())
+}
+
+// Espelha Fornecedor de packages/domain/src/entities/comercial.ts. Fornecedores
+// sao entidades de mercado (nao pertencem a uma empresa) — GDD secao 15.
+model Fornecedor {
+  id                 String @id @default(cuid())
+  nome               String
+  precoKgRacao       Float
+  /// dias para pagar (0 = a vista) — packages/domain: Fornecedor.prazoPagamentoDias
+  prazoPagamentoDias Int
+  prazoEntregaDias   Int
+  /// 0-100
+  confiabilidade     Int
+
+  unidadesAtendidas UnidadeNegocio[]
+
+  criadoEm DateTime @default(now())
 }
 
 // Espelha LoteProducao de packages/domain/src/entities/producao.ts. Estagio

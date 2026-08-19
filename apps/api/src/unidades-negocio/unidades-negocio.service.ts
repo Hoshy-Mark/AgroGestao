@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { CriarUnidadeNegocioDto } from "./dto/criar-unidade-negocio.dto.js";
+import type { EscolherFornecedorDto } from "./dto/escolher-fornecedor.dto.js";
 
 @Injectable()
 export class UnidadesNegocioService {
@@ -20,7 +21,16 @@ export class UnidadesNegocioService {
   buscarPorId(id: string) {
     return this.prisma.unidadeNegocio.findUniqueOrThrow({
       where: { id },
-      include: { lotes: true },
+      include: { lotes: true, fornecedorRacao: true },
+    });
+  }
+
+  /** Troca o fornecedor de ração da unidade (GDD secao 11.2) — decisão comercial recorrente do início de jogo. */
+  escolherFornecedorRacao(unidadeId: string, dto: EscolherFornecedorDto) {
+    return this.prisma.unidadeNegocio.update({
+      where: { id: unidadeId },
+      data: { fornecedorRacaoId: dto.fornecedorId },
+      include: { fornecedorRacao: true },
     });
   }
 }
