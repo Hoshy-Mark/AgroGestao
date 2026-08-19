@@ -14,6 +14,8 @@ A API (`apps/api`) persiste `Empresa` → `UnidadeNegocio` → `Lote` via Prisma
 
 **Sobre o `.env` da API:** `main.ts` carrega `apps/api/.env` via `dotenv/config` — sem isso, `nest start`/`node dist/main.js` não leem o arquivo sozinhos (diferente do Prisma CLI, que carrega `.env` automaticamente).
 
+O dashboard já é jogável: `/nova-empresa` cria a herança completa (empresa + unidade + um lote que já nasce em produção, pico de postura) e o botão **"Avançar 1 dia"** roda o `MotorPostura` de verdade a cada clique — caixa, dia, aves vivas e a fala do mentor atualizam com o resultado real. Preço de ração/ovo ainda são valores de referência fixos (não existe `Mercado` nem `Fornecedor` jogável ainda — GDD §15).
+
 O que na Domain Bible ainda não tem número sourced (ex.: preço de ração/ovo "oficial") está explicitamente marcado como placeholder de calibração — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md).
 
 ## Estrutura
@@ -66,9 +68,11 @@ Ver [docs/GDD.md#30](./docs/GDD.md#30-próxima-etapa-recomendada):
 1. ~~Preencher a Domain Bible com as regras reais da avicultura de postura.~~ Feito — ver [docs/DOMAIN_BIBLE.md](./docs/DOMAIN_BIBLE.md).
 2. ~~Ligar o `MotorPostura` ao estado da empresa via API/Prisma.~~ Feito e validado contra Postgres real — ver Status acima.
 3. ~~Ligar o frontend (`apps/web`) na API de verdade.~~ Feito e validado — onboarding cria empresa real, dashboard carrega sem cair no modo demo.
-4. Fechar os números que ainda faltam na Game Economy (preço de ração/ovo "oficial", prazo de fornecedor — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md)).
-5. Primeiro vertical slice jogável: herança → prólogo → operação → produção → venda → recebimento → fechamento — incluindo emitir `DocumentoFiscal` a cada transação real (hoje o módulo existe no domínio mas nenhum endpoint o chama ainda), e ligar o botão "avançar dia" na UI ao endpoint `POST /lotes/:id/avancar-dia`.
-6. Evoluir as demais telas (Negócios, Financeiro, Comercial, Mercado) no mesmo estilo do dashboard.
+4. ~~Ligar o botão "avançar dia" na UI ao endpoint real.~~ Feito e validado — dashboard mostra lote real e "Avançar 1 dia" roda o motor de verdade a cada clique.
+5. Fechar os números que ainda faltam na Game Economy (preço de ração/ovo "oficial", prazo de fornecedor — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md)) — hoje o preço usado no "Avançar 1 dia" é fixo no código (`apps/web/src/app/actions.ts`), sem `Mercado`/`Fornecedor` jogável.
+6. Primeira venda de verdade: `Contrato`/venda direta (Domain Bible §15) — hoje os ovos produzidos viram receita automaticamente, sem cliente nem negociação. Emitir `DocumentoFiscal` a cada transação real (o módulo existe no domínio, nenhum endpoint o chama ainda).
+7. `HistoricoProducao`/DRE de verdade (GDD §9) — hoje "Receita/Custos (mês)" não existem, só o resultado do último dia.
+8. Evoluir as demais telas (Negócios, Financeiro, Comercial, Mercado) no mesmo estilo do dashboard.
 
 ## Licença
 
