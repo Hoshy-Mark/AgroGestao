@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import type { EstadoEmpresa, Linhagem, LoteProducao } from "@agrogestao/domain";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { DocumentosFiscaisService } from "../documentos-fiscais/documentos-fiscais.service.js";
 import { aplicarTickLote } from "./lote-tick.js";
 import type { CriarLoteDto } from "./dto/criar-lote.dto.js";
 import type { AvancarDiaDto } from "./dto/avancar-dia.dto.js";
+
+/** Identifica uma venda/compra sem cliente/fornecedor formal (Domain Bible secao 10, "canal spot"). */
+const MERCADO_SPOT_ID = "mercado-spot";
 
 /** Usado apenas enquanto a unidade nao escolheu um Fornecedor de racao (GDD secao 11.2). */
 const PRECO_KG_RACAO_PADRAO = 2.5;
@@ -12,7 +16,10 @@ const PRECO_MEDIO_DUZIA_PADRAO = 4.5;
 
 @Injectable()
 export class LotesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly documentosFiscais: DocumentosFiscaisService
+  ) {}
 
   criar(dto: CriarLoteDto) {
     return this.prisma.lote.create({
@@ -120,6 +127,56 @@ export class LotesService {
         },
       }),
     ]);
+
+    // Documentos fiscais (Domain Bible secoes 17-18) so depois que o tick
+    // persiste com sucesso — nao emite nota pra uma transacao que nao
+    // aconteceu de verdade. Decorativos (sem validade fiscal), entao nao
+    // entram no $transaction acima: se falharem, o dia ja avancou mesmo
+    // assim, so a trilha de auditoria fica incompleta por esse tick.
+    const contratoAtivo = loteDb.unidadeNegocio.contratos[0];
+    const fornecedorAtivo = loteDb.unidadeNegocio.fornecedorRacao;
+    const transacaoId = `${loteId}:dia-${empresaEstado.diaAtual}`;
+
+    if (resultado.racaoConsumidaKg > 0) {
+      await this.documentosFiscais.emitir({
+        empresaId: empresaDb.id,
+        tipo: "NOTA_ENTRADA_COMPRA",
+        emitenteId: fornecedorAtivo?.id ?? MERCADO_SPOT_ID,
+        destinatarioId: empresaDb.id,
+        itens: [
+          {
+            descricao: "Ração",
+            quantidade: resultado.racaoConsumidaKg,
+            unidade: "kg",
+            valorUnitario: precoKgRacao,
+            valorTotal: resultado.custoRacao,
+          },
+        ],
+        transacaoId,
+        loteId,
+      });
+    }
+
+    if (resultado.ovosProduzidos > 0) {
+      await this.documentosFiscais.emitir({
+        empresaId: empresaDb.id,
+        tipo: "NOTA_VENDA_DIRETA",
+        emitenteId: empresaDb.id,
+        destinatarioId: contratoAtivo?.clienteId ?? MERCADO_SPOT_ID,
+        itens: [
+          {
+            descricao: "Ovos (produção do dia)",
+            quantidade: resultado.ovosProduzidos / 12,
+            unidade: "duzia",
+            valorUnitario: precoMedioDuzia,
+            valorTotal: resultado.receitaBruta,
+          },
+        ],
+        transacaoId,
+        contratoId: contratoAtivo?.id,
+        loteId,
+      });
+    }
 
     return { lote: loteSalvo, empresa: empresaSalva, resultado };
   }

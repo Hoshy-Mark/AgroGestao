@@ -153,3 +153,38 @@ model HistoricoProducao {
 
   @@index([loteId, dia])
 }
+
+// Espelha DocumentoFiscal de packages/domain/src/fiscal/documentoFiscal.ts.
+// Numero e chave sao ficticios/decorativos (o proprio dominio documenta
+// isso), mas o numero precisa ser sequencial de verdade por empresa+tipo —
+// diferente do NumeradorDocumentoFiscal em memoria do dominio (que reseta a
+// cada boot), esta tabela e a fonte da verdade persistida.
+model DocumentoFiscal {
+  id     String @id @default(cuid())
+  empresaId String
+
+  numero Int
+  serie  Int    @default(1)
+  /// TipoDocumentoFiscal (packages/domain)
+  tipo   String
+  /// "EMITIDO" | "CANCELADO"
+  status String @default("EMITIDO")
+
+  dataEmissao    DateTime @default(now())
+  emitenteId     String
+  destinatarioId String
+  /// ItemDocumentoFiscal[] (packages/domain)
+  itens          Json
+  valorTotal     Float
+  chaveFicticia  String
+
+  /// ReferenciaDocumentoFiscal (packages/domain) achatada em colunas
+  transacaoId String
+  contratoId  String?
+  loteId      String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([empresaId, tipo])
+  @@index([empresaId, dataEmissao])
+}

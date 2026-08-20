@@ -155,6 +155,43 @@ export function buscarHistoricoMensal(empresaId: string) {
   return apiFetch<HistoricoMensalApi>(`/empresas/${empresaId}/historico`);
 }
 
+export type TipoDocumentoFiscalApi =
+  | "NOTA_ENTRADA_COMPRA"
+  | "NOTA_VENDA_DIRETA"
+  | "NOTA_REMESSA_CONSIGNACAO"
+  | "NOTA_VENDA_CONSIGNACAO"
+  | "NOTA_DEVOLUCAO_CONSIGNACAO"
+  | "NOTA_ACERTO_INTEGRACAO"
+  | "NOTA_DESCARTE_LOTE"
+  | "NOTA_TRANSPORTE";
+
+export interface ItemDocumentoFiscalApi {
+  descricao: string;
+  quantidade: number;
+  unidade: string;
+  valorUnitario: number;
+  valorTotal: number;
+}
+
+export interface DocumentoFiscalApi {
+  id: string;
+  numero: number;
+  serie: number;
+  tipo: TipoDocumentoFiscalApi;
+  status: "EMITIDO" | "CANCELADO";
+  dataEmissao: string;
+  emitenteId: string;
+  destinatarioId: string;
+  itens: ItemDocumentoFiscalApi[];
+  valorTotal: number;
+  chaveFicticia: string;
+}
+
+/** Trilha de auditoria (Domain Bible secoes 17-18) — todo documento fiscal emitido pela empresa, mais recente primeiro. */
+export function listarDocumentos(empresaId: string) {
+  return apiFetch<DocumentoFiscalApi[]>(`/empresas/${empresaId}/documentos`);
+}
+
 export function listarFornecedores() {
   return apiFetch<FornecedorApi[]>("/fornecedores");
 }

@@ -8,9 +8,9 @@ Simulador de gestão agroindustrial — o jogador herda uma pequena propriedade 
 
 ## Status
 
-**Fase 1 — vertical slice** (ver [roadmap](./docs/GDD.md#25-roadmap-de-desenvolvimento-e-prioridades)) em andamento. A [Domain Bible](./docs/DOMAIN_BIBLE.md) está preenchida com regras reais (fontes citadas por seção), e o `MotorPostura` (`packages/domain`) usa esses números: curva de postura por idade/linhagem, consumo por estágio do lote, mortalidade, sazonalidade de preço, custo de mão de obra, Funrural sobre a receita. Um módulo de `DocumentoFiscal` (trilha de auditoria) também existe no domínio, ainda não ligado a compras/vendas reais.
+**Fase 1 — vertical slice** (ver [roadmap](./docs/GDD.md#25-roadmap-de-desenvolvimento-e-prioridades)) em andamento. A [Domain Bible](./docs/DOMAIN_BIBLE.md) está preenchida com regras reais (fontes citadas por seção), e o `MotorPostura` (`packages/domain`) usa esses números: curva de postura por idade/linhagem, consumo por estágio do lote, mortalidade, sazonalidade de preço, custo de mão de obra, Funrural sobre a receita.
 
-A API (`apps/api`) persiste `Empresa` → `UnidadeNegocio` → `Lote`, mais `Fornecedor`, `Cliente`, `Contrato` e `HistoricoProducao`, via Prisma. `POST /lotes/:id/avancar-dia` roda o `MotorPostura` de verdade: preço de ração vem do `Fornecedor` escolhido pela unidade, preço de venda vem do `Contrato` ativo — cada um cai num valor de referência só se o jogador ainda não decidiu. Cada tick grava um `HistoricoProducao`, base do DRE. `PrismaService` conecta sob demanda (não trava o boot se o banco cair).
+A API (`apps/api`) persiste `Empresa` → `UnidadeNegocio` → `Lote`, mais `Fornecedor`, `Cliente`, `Contrato`, `HistoricoProducao` e `DocumentoFiscal`, via Prisma. `POST /lotes/:id/avancar-dia` roda o `MotorPostura` de verdade: preço de ração vem do `Fornecedor` escolhido pela unidade, preço de venda vem do `Contrato` ativo — cada um cai num valor de referência só se o jogador ainda não decidiu. Cada tick grava um `HistoricoProducao` (base do DRE) e emite `DocumentoFiscal`s de compra/venda (trilha de auditoria, Domain Bible §17-18) — a numeração sequencial por tipo é persistida no Postgres, diferente do `NumeradorDocumentoFiscal` em memória do `packages/domain` (que o próprio módulo documenta como não sobrevivendo a restart). `PrismaService` conecta sob demanda (não trava o boot se o banco cair).
 
 **Sobre o `.env` da API:** `main.ts` carrega `apps/api/.env` via `dotenv/config` — sem isso, `nest start`/`node dist/main.js` não leem o arquivo sozinhos (diferente do Prisma CLI, que carrega `.env` automaticamente).
 
@@ -20,7 +20,8 @@ O jogo já tem um loop de decisão real, não só o botão de avançar dia:
 - **Dashboard (`/`)**: "Avançar 1 dia" roda o `MotorPostura`; caixa, dia, aves vivas, e KPIs de "Receita/Custos/Lucro" (dos últimos N dias, via `HistoricoProducao`) atualizam com dado real.
 - **`/mercado`**: escolher entre 3 fornecedores de ração com trade-off real (barato/pouco confiável vs. caro/confiável vs. meio-termo) — o preço escolhido é o que entra no próximo tick.
 - **`/comercial`**: fechar contrato com 1 de 3 clientes (volume alto/preço baixo vs. volume baixo/preço alto) — determina o preço de venda dos ovos.
-- Sidebar navega de verdade (`Link`/`usePathname`); Negócios/Financeiro/Relatórios/Codex ainda são "em construção", com uma explicação do que falta em cada uma.
+- **`/relatorios`**: trilha de documentos fiscais (compra de ração, venda de ovos) gerados por cada dia avançado — número sequencial, chave fictícia, valor.
+- Sidebar navega de verdade (`Link`/`usePathname`); Negócios/Financeiro/Codex ainda são "em construção", com uma explicação do que falta em cada uma.
 
 O que na Domain Bible ainda não tem número sourced (ex.: preço de ração/ovo "oficial", usados como fallback antes do jogador escolher fornecedor/cliente) está explicitamente marcado como placeholder de calibração — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md).
 
@@ -79,8 +80,8 @@ Ver [docs/GDD.md#30](./docs/GDD.md#30-próxima-etapa-recomendada):
 6. ~~Fornecedor de ração jogável (`/mercado`).~~ Feito e validado — preço de ração muda de verdade conforme o fornecedor escolhido.
 7. ~~Primeira venda de verdade: `Cliente`/`Contrato` (`/comercial`).~~ Feito e validado — preço de venda vem do contrato fechado, não mais fixo.
 8. ~~Sidebar navega de verdade.~~ Feito — Negócios/Financeiro/Relatórios/Codex viraram páginas "em construção" com explicação, não links mortos.
-9. Emitir `DocumentoFiscal` a cada transação real (o módulo existe no domínio — `packages/domain/src/fiscal` — mas nenhum endpoint o chama ainda).
-10. Telas de conteúdo real pra Negócios, Financeiro (DRE completo, fluxo de caixa) e Relatórios (histórico por lote) — hoje são placeholders "em construção".
+9. ~~Emitir `DocumentoFiscal` a cada transação real.~~ Feito e validado — `/relatorios` mostra a trilha real (compra de ração + venda de ovos por dia avançado), numeração sequencial persistida.
+10. Telas de conteúdo real pra Negócios e Financeiro (DRE completo, fluxo de caixa) — hoje são placeholders "em construção". Relatórios já tem conteúdo real (documentos), mas ainda falta o histórico por lote/desempenho.
 11. Sistema de acerto de IEP (integração vertical, Domain Bible §7.3), crédito Pronaf (§11), seguro rural (§12) — sistemas maiores, ainda não implementados.
 12. Reputação/relacionamento dinâmicos: hoje `relacionamento`/`confiança` do Cliente e `confiabilidade` do Fornecedor existem como dado mas não mudam com o comportamento do jogador (GDD §14) — são só estatísticas de exibição por enquanto.
 
