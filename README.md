@@ -21,7 +21,8 @@ O jogo já tem um loop de decisão real, não só o botão de avançar dia:
 - **`/mercado`**: escolher entre 3 fornecedores de ração com trade-off real (barato/pouco confiável vs. caro/confiável vs. meio-termo) — o preço escolhido é o que entra no próximo tick.
 - **`/comercial`**: fechar contrato com 1 de 3 clientes (volume alto/preço baixo vs. volume baixo/preço alto) — determina o preço de venda dos ovos.
 - **`/relatorios`**: trilha de documentos fiscais (compra de ração, venda de ovos) gerados por cada dia avançado — número sequencial, chave fictícia, valor.
-- Sidebar navega de verdade (`Link`/`usePathname`); Negócios/Financeiro/Codex ainda são "em construção", com uma explicação do que falta em cada uma.
+- **`/financeiro`**: DRE de verdade (Receita bruta → Funrural → Receita líquida → Ração → Mão de obra → Resultado) do período, mais a tabela dia a dia — mesmo dado do `HistoricoProducao`, sem endpoint novo.
+- Sidebar navega de verdade (`Link`/`usePathname`); Negócios/Codex ainda são "em construção", com uma explicação do que falta em cada uma.
 
 O que na Domain Bible ainda não tem número sourced (ex.: preço de ração/ovo "oficial", usados como fallback antes do jogador escolher fornecedor/cliente) está explicitamente marcado como placeholder de calibração — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md).
 
@@ -81,9 +82,10 @@ Ver [docs/GDD.md#30](./docs/GDD.md#30-próxima-etapa-recomendada):
 7. ~~Primeira venda de verdade: `Cliente`/`Contrato` (`/comercial`).~~ Feito e validado — preço de venda vem do contrato fechado, não mais fixo.
 8. ~~Sidebar navega de verdade.~~ Feito — Negócios/Financeiro/Relatórios/Codex viraram páginas "em construção" com explicação, não links mortos.
 9. ~~Emitir `DocumentoFiscal` a cada transação real.~~ Feito e validado — `/relatorios` mostra a trilha real (compra de ração + venda de ovos por dia avançado), numeração sequencial persistida.
-10. Telas de conteúdo real pra Negócios e Financeiro (DRE completo, fluxo de caixa) — hoje são placeholders "em construção". Relatórios já tem conteúdo real (documentos), mas ainda falta o histórico por lote/desempenho.
-11. Sistema de acerto de IEP (integração vertical, Domain Bible §7.3), crédito Pronaf (§11), seguro rural (§12) — sistemas maiores, ainda não implementados.
-12. Reputação/relacionamento dinâmicos: hoje `relacionamento`/`confiança` do Cliente e `confiabilidade` do Fornecedor existem como dado mas não mudam com o comportamento do jogador (GDD §14) — são só estatísticas de exibição por enquanto.
+10. ~~Financeiro com DRE real.~~ Feito e validado — Receita bruta → Funrural → Receita líquida → Ração → Mão de obra → Resultado, mais tabela dia a dia. Ainda falta fluxo de caixa projetado (contas a pagar/receber futuras não existem, tudo é à vista hoje).
+11. Negócios com conteúdo real (hoje é placeholder) — detalhe de cada `UnidadeNegocio`/`Lote`, e um caminho pra investir em capacidade (novo galpão, segundo lote).
+12. Sistema de acerto de IEP (integração vertical, Domain Bible §7.3), crédito Pronaf (§11), seguro rural (§12) — sistemas maiores, ainda não implementados.
+13. Reputação/relacionamento dinâmicos: hoje `relacionamento`/`confiança` do Cliente e `confiabilidade` do Fornecedor existem como dado mas não mudam com o comportamento do jogador (GDD §14) — são só estatísticas de exibição por enquanto.
 
 ## Licença
 
