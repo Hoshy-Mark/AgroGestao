@@ -49,7 +49,8 @@ model UnidadeNegocio {
   fornecedorRacaoId String?
   fornecedorRacao   Fornecedor? @relation(fields: [fornecedorRacaoId], references: [id])
 
-  lotes Lote[]
+  lotes     Lote[]
+  contratos Contrato[]
 
   criadaEm DateTime @default(now())
 }
@@ -69,6 +70,44 @@ model Fornecedor {
   unidadesAtendidas UnidadeNegocio[]
 
   criadoEm DateTime @default(now())
+}
+
+// Espelha Cliente de packages/domain/src/entities/comercial.ts. Assim como
+// Fornecedor, e uma entidade de mercado (GDD secao 14/15), com um perfil de
+// oferta fixo (preco/volume/prazo) enquanto nao existe negociacao de verdade.
+model Cliente {
+  id                 String @id @default(cuid())
+  nome               String
+  /// 0-100, especifico dessa contraparte (GDD secao 14)
+  relacionamento     Int    @default(50)
+  confianca          Int    @default(50)
+  sensibilidadePreco Int
+  prazoMedioDias     Int
+  precoOfertadoDuzia Float
+  volumeMensalDuzias Int
+
+  contratos Contrato[]
+  criadoEm  DateTime   @default(now())
+}
+
+// Espelha Contrato de packages/domain/src/entities/comercial.ts. So um
+// Contrato "ativo" por UnidadeNegocio de cada vez no MVP — fechar um novo
+// desativa o anterior, mesma logica de troca do Fornecedor de racao.
+model Contrato {
+  id               String         @id @default(cuid())
+  clienteId        String
+  cliente          Cliente        @relation(fields: [clienteId], references: [id])
+  unidadeNegocioId String
+  unidadeNegocio   UnidadeNegocio @relation(fields: [unidadeNegocioId], references: [id])
+
+  precoUnitario        Float
+  volumeMensalDuzias   Int
+  prazoRecebimentoDias Int
+  ativo                Boolean @default(true)
+
+  iniciadoEm DateTime @default(now())
+
+  @@index([unidadeNegocioId, ativo])
 }
 
 // Espelha LoteProducao de packages/domain/src/entities/producao.ts. Estagio

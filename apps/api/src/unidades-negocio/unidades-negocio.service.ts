@@ -21,7 +21,11 @@ export class UnidadesNegocioService {
   buscarPorId(id: string) {
     return this.prisma.unidadeNegocio.findUniqueOrThrow({
       where: { id },
-      include: { lotes: true, fornecedorRacao: true },
+      include: {
+        lotes: true,
+        fornecedorRacao: true,
+        contratos: { where: { ativo: true }, include: { cliente: true } },
+      },
     });
   }
 

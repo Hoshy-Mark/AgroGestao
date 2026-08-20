@@ -5,6 +5,8 @@ import { EmpresasModule } from "./empresas/empresas.module.js";
 import { UnidadesNegocioModule } from "./unidades-negocio/unidades-negocio.module.js";
 import { LotesModule } from "./lotes/lotes.module.js";
 import { FornecedoresModule } from "./fornecedores/fornecedores.module.js";
+import { ClientesModule } from "./clientes/clientes.module.js";
+import { ContratosModule } from "./contratos/contratos.module.js";
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { FornecedoresModule } from "./fornecedores/fornecedores.module.js";
     UnidadesNegocioModule,
     LotesModule,
     FornecedoresModule,
+    ClientesModule,
+    ContratosModule,
   ],
   controllers: [AppController],
   providers: [],

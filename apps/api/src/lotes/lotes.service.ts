@@ -7,6 +7,8 @@ import type { AvancarDiaDto } from "./dto/avancar-dia.dto.js";
 
 /** Usado apenas enquanto a unidade nao escolheu um Fornecedor de racao (GDD secao 11.2). */
 const PRECO_KG_RACAO_PADRAO = 2.5;
+/** Usado apenas enquanto a unidade nao fechou nenhum Contrato de venda (Domain Bible secao 15). */
+const PRECO_MEDIO_DUZIA_PADRAO = 4.5;
 
 @Injectable()
 export class LotesService {
@@ -37,7 +39,13 @@ export class LotesService {
     const loteDb = await this.prisma.lote.findUniqueOrThrow({
       where: { id: loteId },
       include: {
-        unidadeNegocio: { include: { empresa: true, fornecedorRacao: true } },
+        unidadeNegocio: {
+          include: {
+            empresa: true,
+            fornecedorRacao: true,
+            contratos: { where: { ativo: true }, take: 1 },
+          },
+        },
       },
     });
     const empresaDb = loteDb.unidadeNegocio.empresa;
@@ -59,19 +67,28 @@ export class LotesService {
       diaAtual: empresaDb.diaAtual,
     };
 
-    // O preco de racao vem do Fornecedor escolhido pela unidade (GDD secao
-    // 11.2); so cai no valor de referencia se o jogador ainda nao escolheu
-    // nenhum, ou se quem chamou o endpoint sobrescreveu explicitamente.
+    // Preco de racao vem do Fornecedor escolhido (GDD secao 11.2); preco de
+    // venda vem do Contrato ativo (Domain Bible secao 15). Ambos so caem no
+    // valor de referencia se o jogador ainda nao decidiu, ou se quem chamou
+    // o endpoint sobrescreveu explicitamente.
     const precoKgRacao =
       mercado.precoKgRacao ??
       loteDb.unidadeNegocio.fornecedorRacao?.precoKgRacao ??
       PRECO_KG_RACAO_PADRAO;
+    const precoMedioDuzia =
+      mercado.precoMedioDuzia ??
+      loteDb.unidadeNegocio.contratos[0]?.precoUnitario ??
+      PRECO_MEDIO_DUZIA_PADRAO;
 
     const {
       lote: loteAtualizado,
       empresaEstado: empresaAtualizada,
       resultado,
-    } = aplicarTickLote(loteDominio, empresaEstado, { ...mercado, precoKgRacao });
+    } = aplicarTickLote(loteDominio, empresaEstado, {
+      ...mercado,
+      precoKgRacao,
+      precoMedioDuzia,
+    });
 
     const [loteSalvo, empresaSalva] = await this.prisma.$transaction([
       this.prisma.lote.update({

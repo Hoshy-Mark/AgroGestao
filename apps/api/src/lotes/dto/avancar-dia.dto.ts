@@ -11,9 +11,11 @@ export class AvancarDiaDto {
   @Min(0)
   precoKgRacao?: number;
 
+  /** Opcional: se omitido, o servico usa o Contrato de venda ativo da unidade (Domain Bible secao 15), com fallback pro preco de referencia. */
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  precoMedioDuzia!: number;
+  precoMedioDuzia?: number;
 
   @IsOptional()
   @IsNumber()

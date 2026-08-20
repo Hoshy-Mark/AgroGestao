@@ -6,25 +6,19 @@ import { revalidatePath } from "next/cache";
 import { avancarDiaLote } from "@/lib/api";
 
 /**
- * Preco de venda de referencia ate existir Cliente/Contrato de verdade (GDD
- * secao 15/16): ponto medio da faixa Cepea R$3,00-7,50/duzia
- * (GAME_ECONOMY.md secao 5). O preco de racao NAO entra mais aqui — o
- * servico deriva do Fornecedor escolhido pela unidade em /mercado,
- * com fallback pro preco de referencia se nenhum foi escolhido ainda.
- */
-const PRECO_MEDIO_DUZIA_REFERENCIA = 4.5;
-
-/**
  * Roda um dia do MotorPostura sobre o lote (via API) e guarda o resultado
  * numa cookie de vida curta so pra narrar "o que aconteceu hoje" logo
  * depois do redirect — o HistoricoProducao persistido (GDD secao 9) ja
  * existe e alimenta os KPIs do periodo; a cookie e so o feedback imediato
  * do ultimo clique.
+ *
+ * Nem preco de racao nem preco de venda entram aqui: o servico deriva do
+ * Fornecedor escolhido em /mercado e do Contrato ativo em /comercial,
+ * cada um com fallback pro preco de referencia se o jogador ainda nao
+ * decidiu nenhum dos dois.
  */
 export async function avancarDia(loteId: string) {
-  const resposta = await avancarDiaLote(loteId, {
-    precoMedioDuzia: PRECO_MEDIO_DUZIA_REFERENCIA,
-  });
+  const resposta = await avancarDiaLote(loteId);
 
   (await cookies()).set("ultimoResultado", JSON.stringify(resposta.resultado), {
     path: "/",

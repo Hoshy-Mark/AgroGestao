@@ -64,6 +64,8 @@ export interface UnidadeNegocioApi {
   fornecedorRacaoId: string | null;
   fornecedorRacao?: FornecedorApi | null;
   lotes?: LoteApi[];
+  /** So o contrato ativo (a API ja filtra), no maximo 1 no MVP. */
+  contratos?: ContratoApi[];
 }
 
 export interface FornecedorApi {
@@ -82,6 +84,28 @@ export interface LoteApi {
   quantidadeAvesAlojadas: number;
   quantidadeAvesVivas: number;
   idadeDias: number;
+}
+
+export interface ClienteApi {
+  id: string;
+  nome: string;
+  relacionamento: number;
+  confianca: number;
+  sensibilidadePreco: number;
+  prazoMedioDias: number;
+  precoOfertadoDuzia: number;
+  volumeMensalDuzias: number;
+}
+
+export interface ContratoApi {
+  id: string;
+  clienteId: string;
+  unidadeNegocioId: string;
+  precoUnitario: number;
+  volumeMensalDuzias: number;
+  prazoRecebimentoDias: number;
+  ativo: boolean;
+  cliente?: ClienteApi;
 }
 
 export interface ResultadoAvancarDia {
@@ -135,6 +159,17 @@ export function listarFornecedores() {
   return apiFetch<FornecedorApi[]>("/fornecedores");
 }
 
+export function listarClientes() {
+  return apiFetch<ClienteApi[]>("/clientes");
+}
+
+export function fecharContrato(unidadeNegocioId: string, clienteId: string) {
+  return apiFetch<ContratoApi>("/contratos", {
+    method: "POST",
+    body: JSON.stringify({ unidadeNegocioId, clienteId }),
+  });
+}
+
 export function escolherFornecedorRacao(unidadeId: string, fornecedorId: string) {
   return apiFetch<UnidadeNegocioApi>(`/unidades-negocio/${unidadeId}/fornecedor-racao`, {
     method: "PATCH",
@@ -171,11 +206,12 @@ export function avancarDiaLote(
   mercado: {
     /** Se omitido, a API usa o Fornecedor escolhido pela unidade (ver /mercado), com fallback pro preco de referencia. */
     precoKgRacao?: number;
-    precoMedioDuzia: number;
+    /** Se omitido, a API usa o Contrato ativo da unidade (ver /comercial), com fallback pro preco de referencia. */
+    precoMedioDuzia?: number;
     mes?: number;
     custoMaoDeObraMensal?: number;
     aliquotaFunrural?: number;
-  }
+  } = {}
 ) {
   return apiFetch<ResultadoAvancarDia>(`/lotes/${loteId}/avancar-dia`, {
     method: "POST",

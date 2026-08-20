@@ -46,7 +46,15 @@ export class EmpresasService {
   buscarPorId(id: string) {
     return this.prisma.empresa.findUniqueOrThrow({
       where: { id },
-      include: { unidadesNegocio: { include: { lotes: true } } },
+      include: {
+        unidadesNegocio: {
+          include: {
+            lotes: true,
+            fornecedorRacao: true,
+            contratos: { where: { ativo: true }, include: { cliente: true } },
+          },
+        },
+      },
     });
   }
 

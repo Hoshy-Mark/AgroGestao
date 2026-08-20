@@ -10,13 +10,19 @@ Simulador de gestão agroindustrial — o jogador herda uma pequena propriedade 
 
 **Fase 1 — vertical slice** (ver [roadmap](./docs/GDD.md#25-roadmap-de-desenvolvimento-e-prioridades)) em andamento. A [Domain Bible](./docs/DOMAIN_BIBLE.md) está preenchida com regras reais (fontes citadas por seção), e o `MotorPostura` (`packages/domain`) usa esses números: curva de postura por idade/linhagem, consumo por estágio do lote, mortalidade, sazonalidade de preço, custo de mão de obra, Funrural sobre a receita. Um módulo de `DocumentoFiscal` (trilha de auditoria) também existe no domínio, ainda não ligado a compras/vendas reais.
 
-A API (`apps/api`) persiste `Empresa` → `UnidadeNegocio` → `Lote` via Prisma e expõe um endpoint que roda o `MotorPostura` de verdade: `POST /lotes/:id/avancar-dia`. **Validado end-to-end contra um Postgres real**: `POST /empresas` → `POST /unidades-negocio` → `POST /lotes` → `POST /lotes/:id/avancar-dia` roda o motor e persiste o resultado — caixa e idade do lote atualizam certinho no banco. O frontend também foi validado no mesmo teste: `/nova-empresa` cria a empresa via API e o dashboard carrega os dados reais (sem o banner de "modo demo"). `PrismaService` conecta sob demanda (não trava o boot se o banco cair depois).
+A API (`apps/api`) persiste `Empresa` → `UnidadeNegocio` → `Lote`, mais `Fornecedor`, `Cliente`, `Contrato` e `HistoricoProducao`, via Prisma. `POST /lotes/:id/avancar-dia` roda o `MotorPostura` de verdade: preço de ração vem do `Fornecedor` escolhido pela unidade, preço de venda vem do `Contrato` ativo — cada um cai num valor de referência só se o jogador ainda não decidiu. Cada tick grava um `HistoricoProducao`, base do DRE. `PrismaService` conecta sob demanda (não trava o boot se o banco cair).
 
 **Sobre o `.env` da API:** `main.ts` carrega `apps/api/.env` via `dotenv/config` — sem isso, `nest start`/`node dist/main.js` não leem o arquivo sozinhos (diferente do Prisma CLI, que carrega `.env` automaticamente).
 
-O dashboard já é jogável: `/nova-empresa` cria a herança completa (empresa + unidade + um lote que já nasce em produção, pico de postura) e o botão **"Avançar 1 dia"** roda o `MotorPostura` de verdade a cada clique — caixa, dia, aves vivas e a fala do mentor atualizam com o resultado real. Preço de ração/ovo ainda são valores de referência fixos (não existe `Mercado` nem `Fornecedor` jogável ainda — GDD §15).
+O jogo já tem um loop de decisão real, não só o botão de avançar dia:
 
-O que na Domain Bible ainda não tem número sourced (ex.: preço de ração/ovo "oficial") está explicitamente marcado como placeholder de calibração — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md).
+- **`/nova-empresa`** cria a herança completa (empresa + unidade + lote já em produção, pico de postura).
+- **Dashboard (`/`)**: "Avançar 1 dia" roda o `MotorPostura`; caixa, dia, aves vivas, e KPIs de "Receita/Custos/Lucro" (dos últimos N dias, via `HistoricoProducao`) atualizam com dado real.
+- **`/mercado`**: escolher entre 3 fornecedores de ração com trade-off real (barato/pouco confiável vs. caro/confiável vs. meio-termo) — o preço escolhido é o que entra no próximo tick.
+- **`/comercial`**: fechar contrato com 1 de 3 clientes (volume alto/preço baixo vs. volume baixo/preço alto) — determina o preço de venda dos ovos.
+- Sidebar navega de verdade (`Link`/`usePathname`); Negócios/Financeiro/Relatórios/Codex ainda são "em construção", com uma explicação do que falta em cada uma.
+
+O que na Domain Bible ainda não tem número sourced (ex.: preço de ração/ovo "oficial", usados como fallback antes do jogador escolher fornecedor/cliente) está explicitamente marcado como placeholder de calibração — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md).
 
 ## Estrutura
 
@@ -59,20 +65,24 @@ npm run prisma:migrate -w apps/api   # cria as tabelas Empresa/UnidadeNegocio/Lo
 npm run dev:api
 ```
 
-Fluxo mínimo pra testar a API de ponta a ponta (depois do `dev:api` no ar): `POST /empresas` (cria a empresa herdada) → `POST /unidades-negocio` (com o `empresaId` retornado) → `POST /lotes` (com o `unidadeNegocioId` retornado) → `POST /lotes/:id/avancar-dia` com `{ precoKgRacao, precoMedioDuzia }` no corpo — cada chamada roda um dia do `MotorPostura` e atualiza o caixa da empresa.
+Fluxo mínimo pra testar a API de ponta a ponta (depois do `dev:api` no ar): `POST /empresas` (cria a empresa herdada) → `POST /unidades-negocio` (com o `empresaId` retornado) → `POST /lotes` (com o `unidadeNegocioId` retornado) → `POST /lotes/:id/avancar-dia` (corpo `{}` funciona — usa valores de referência) — cada chamada roda um dia do `MotorPostura` e atualiza o caixa da empresa. Opcionalmente, antes de avançar: `GET /fornecedores` + `PATCH /unidades-negocio/:id/fornecedor-racao` e `GET /clientes` + `POST /contratos` pra ver o preço realmente usado mudar.
 
 ## Próximos passos
 
 Ver [docs/GDD.md#30](./docs/GDD.md#30-próxima-etapa-recomendada):
 
 1. ~~Preencher a Domain Bible com as regras reais da avicultura de postura.~~ Feito — ver [docs/DOMAIN_BIBLE.md](./docs/DOMAIN_BIBLE.md).
-2. ~~Ligar o `MotorPostura` ao estado da empresa via API/Prisma.~~ Feito e validado contra Postgres real — ver Status acima.
-3. ~~Ligar o frontend (`apps/web`) na API de verdade.~~ Feito e validado — onboarding cria empresa real, dashboard carrega sem cair no modo demo.
-4. ~~Ligar o botão "avançar dia" na UI ao endpoint real.~~ Feito e validado — dashboard mostra lote real e "Avançar 1 dia" roda o motor de verdade a cada clique.
-5. Fechar os números que ainda faltam na Game Economy (preço de ração/ovo "oficial", prazo de fornecedor — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md)) — hoje o preço usado no "Avançar 1 dia" é fixo no código (`apps/web/src/app/actions.ts`), sem `Mercado`/`Fornecedor` jogável.
-6. Primeira venda de verdade: `Contrato`/venda direta (Domain Bible §15) — hoje os ovos produzidos viram receita automaticamente, sem cliente nem negociação. Emitir `DocumentoFiscal` a cada transação real (o módulo existe no domínio, nenhum endpoint o chama ainda).
-7. `HistoricoProducao`/DRE de verdade (GDD §9) — hoje "Receita/Custos (mês)" não existem, só o resultado do último dia.
-8. Evoluir as demais telas (Negócios, Financeiro, Comercial, Mercado) no mesmo estilo do dashboard.
+2. ~~Ligar o `MotorPostura` ao estado da empresa via API/Prisma.~~ Feito e validado contra Postgres real.
+3. ~~Ligar o frontend (`apps/web`) na API de verdade.~~ Feito e validado.
+4. ~~Ligar o botão "avançar dia" na UI ao endpoint real.~~ Feito e validado.
+5. ~~`HistoricoProducao`/DRE de verdade.~~ Feito — KPIs de "Receita/Custos/Lucro" do período usam dado real (`GET /empresas/:id/historico`), não mais placeholder.
+6. ~~Fornecedor de ração jogável (`/mercado`).~~ Feito e validado — preço de ração muda de verdade conforme o fornecedor escolhido.
+7. ~~Primeira venda de verdade: `Cliente`/`Contrato` (`/comercial`).~~ Feito e validado — preço de venda vem do contrato fechado, não mais fixo.
+8. ~~Sidebar navega de verdade.~~ Feito — Negócios/Financeiro/Relatórios/Codex viraram páginas "em construção" com explicação, não links mortos.
+9. Emitir `DocumentoFiscal` a cada transação real (o módulo existe no domínio — `packages/domain/src/fiscal` — mas nenhum endpoint o chama ainda).
+10. Telas de conteúdo real pra Negócios, Financeiro (DRE completo, fluxo de caixa) e Relatórios (histórico por lote) — hoje são placeholders "em construção".
+11. Sistema de acerto de IEP (integração vertical, Domain Bible §7.3), crédito Pronaf (§11), seguro rural (§12) — sistemas maiores, ainda não implementados.
+12. Reputação/relacionamento dinâmicos: hoje `relacionamento`/`confiança` do Cliente e `confiabilidade` do Fornecedor existem como dado mas não mudam com o comportamento do jogador (GDD §14) — são só estatísticas de exibição por enquanto.
 
 ## Licença
 
