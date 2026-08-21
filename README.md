@@ -23,7 +23,8 @@ O jogo já tem um loop de decisão real, não só o botão de avançar dia:
 - **`/relatorios`**: trilha de documentos fiscais (compra de ração, venda de ovos) gerados por cada dia avançado — número sequencial, chave fictícia, valor.
 - **`/financeiro`**: DRE de verdade (Receita bruta → Funrural → Receita líquida → Ração → Mão de obra → Resultado) do período, mais a tabela dia a dia — mesmo dado do `HistoricoProducao`, sem endpoint novo.
 - **`/negocios`**: detalhe do lote (idade, mortalidade acumulada, conversão alimentar) e a decisão de "renovar o plantel" (Domain Bible §2.3) quando a produção entra em declínio — desativa o lote antigo (preserva o histórico) e aloja um novo do zero.
-- Sidebar navega de verdade (`Link`/`usePathname`); só o Codex ainda é "em construção".
+- **`/codex`**: 6 conceitos (conversão alimentar, capital de giro, fornecedor barato vs. confiável, contrato de venda, trilha de auditoria, renovação de plantel) que desbloqueiam de verdade conforme o jogador vive a situação — sem tabela de eventos separada, derivado do estado que já existe (histórico, documentos, contratos, fornecedor, contagem de lotes).
+- Sidebar navega de verdade (`Link`/`usePathname`) — as 8 telas têm conteúdo real agora, nenhuma é mais placeholder.
 
 O que na Domain Bible ainda não tem número sourced (ex.: preço de ração/ovo "oficial", usados como fallback antes do jogador escolher fornecedor/cliente) está explicitamente marcado como placeholder de calibração — ver [docs/GAME_ECONOMY.md §9](./docs/GAME_ECONOMY.md).
 
@@ -85,9 +86,9 @@ Ver [docs/GDD.md#30](./docs/GDD.md#30-próxima-etapa-recomendada):
 9. ~~Emitir `DocumentoFiscal` a cada transação real.~~ Feito e validado — `/relatorios` mostra a trilha real (compra de ração + venda de ovos por dia avançado), numeração sequencial persistida.
 10. ~~Financeiro com DRE real.~~ Feito e validado — Receita bruta → Funrural → Receita líquida → Ração → Mão de obra → Resultado, mais tabela dia a dia. Ainda falta fluxo de caixa projetado (contas a pagar/receber futuras não existem, tudo é à vista hoje).
 11. ~~Negócios com conteúdo real.~~ Feito e validado — detalhe do lote (idade, mortalidade, conversão alimentar) e "Renovar plantel" (Domain Bible §2.3) quando entra em declínio/descarte. Ainda falta um caminho de expansão de capacidade de verdade (novo galpão/segunda unidade é CAPEX — Domain Bible §14 — não implementado).
-12. Sistema de acerto de IEP (integração vertical, Domain Bible §7.3), crédito Pronaf (§11), seguro rural (§12) — sistemas maiores, ainda não implementados.
+12. ~~Codex jogável.~~ Feito e validado — 6 conceitos que desbloqueiam de verdade conforme o jogador joga (testado: 0/6 numa empresa nova → 4/6 depois de escolher fornecedor, fechar contrato e avançar um dia). Todas as 8 telas da sidebar têm conteúdo real agora, nenhuma é mais placeholder.
 13. Reputação/relacionamento dinâmicos: hoje `relacionamento`/`confiança` do Cliente e `confiabilidade` do Fornecedor existem como dado mas não mudam com o comportamento do jogador (GDD §14) — são só estatísticas de exibição por enquanto.
-14. Codex jogável (GDD §13) — a última tela ainda placeholder.
+14. Sistema de acerto de IEP (integração vertical, Domain Bible §7.3), crédito Pronaf (§11), seguro rural (§12), expansão de capacidade via CAPEX (§14) — sistemas maiores, ainda não implementados.
 
 ## Licença
 

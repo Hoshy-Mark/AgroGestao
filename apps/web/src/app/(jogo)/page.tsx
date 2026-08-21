@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   estagioPorIdadeSemanas,
@@ -256,16 +257,16 @@ export default async function DashboardPage() {
         </section>
       </div>
 
-      <section className={styles.codexTeaser}>
+      <Link href="/codex" className={styles.codexTeaser}>
         <span className={styles.codexIcone}>📖</span>
         <div>
-          <div className={styles.codexTitulo}>Novo conceito no Codex</div>
+          <div className={styles.codexTitulo}>Codex</div>
           <div className={styles.codexTexto}>
-            Capital de giro — a diferença entre pagar seus fornecedores e receber
-            dos seus clientes pode te deixar sem caixa mesmo dando lucro.
+            Cada decisão que você toma pode desbloquear um conceito novo —
+            veja o que já descobriu jogando.
           </div>
         </div>
-      </section>
+      </Link>
     </>
   );
 }

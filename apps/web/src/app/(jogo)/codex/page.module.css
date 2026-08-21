@@ -1,0 +1,79 @@
+.header {
+  margin-bottom: 4px;
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.subtitulo {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-width: 640px;
+}
+
+.progresso {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent);
+  margin-top: 10px;
+}
+
+.lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.card[data-desbloqueado="true"] {
+  border-color: var(--accent-gold);
+}
+
+.card[data-desbloqueado="false"] {
+  opacity: 0.55;
+}
+
+.cardTopo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.icone {
+  font-size: 1.2rem;
+}
+
+.nome {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.nome[data-desbloqueado="false"] {
+  color: var(--text-faint);
+}
+
+.texto {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.pista {
+  margin-top: 10px;
+  font-size: 0.74rem;
+  color: var(--text-faint);
+  font-style: italic;
+}

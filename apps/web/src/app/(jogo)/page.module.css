@@ -236,6 +236,12 @@
   border: 1px dashed var(--border-strong);
   border-radius: 14px;
   padding: 16px 18px;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.codexTeaser:hover {
+  border-color: var(--accent-gold);
 }
 
 .codexIcone {

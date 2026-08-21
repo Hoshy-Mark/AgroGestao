@@ -26,6 +26,11 @@ export class UnidadesNegocioService {
         lotes: { where: { ativo: true } },
         fornecedorRacao: true,
         contratos: { where: { ativo: true }, include: { cliente: true } },
+        /// total de lotes ja alojados (ativos + inativos) — >1 indica que o
+        /// plantel ja foi renovado ao menos uma vez (Domain Bible §2.3),
+        /// usado pelo Codex pra desbloquear esse conceito sem precisar de
+        /// um log de eventos separado.
+        _count: { select: { lotes: true } },
       },
     });
   }

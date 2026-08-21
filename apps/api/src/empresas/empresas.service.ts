@@ -52,6 +52,7 @@ export class EmpresasService {
             lotes: { where: { ativo: true } },
             fornecedorRacao: true,
             contratos: { where: { ativo: true }, include: { cliente: true } },
+            _count: { select: { lotes: true } },
           },
         },
       },

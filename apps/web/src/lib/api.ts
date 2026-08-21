@@ -66,6 +66,8 @@ export interface UnidadeNegocioApi {
   lotes?: LoteApi[];
   /** So o contrato ativo (a API ja filtra), no maximo 1 no MVP. */
   contratos?: ContratoApi[];
+  /** _count.lotes conta ativos + inativos — >1 indica que ja houve renovacao de plantel. */
+  _count?: { lotes: number };
 }
 
 export interface FornecedorApi {
