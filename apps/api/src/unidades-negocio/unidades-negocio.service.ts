@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { CriarUnidadeNegocioDto } from "./dto/criar-unidade-negocio.dto.js";
 import type { EscolherFornecedorDto } from "./dto/escolher-fornecedor.dto.js";
+import type { RenovarLoteDto } from "./dto/renovar-lote.dto.js";
 
 @Injectable()
 export class UnidadesNegocioService {
@@ -22,7 +23,7 @@ export class UnidadesNegocioService {
     return this.prisma.unidadeNegocio.findUniqueOrThrow({
       where: { id },
       include: {
-        lotes: true,
+        lotes: { where: { ativo: true } },
         fornecedorRacao: true,
         contratos: { where: { ativo: true }, include: { cliente: true } },
       },
@@ -35,6 +36,31 @@ export class UnidadesNegocioService {
       where: { id: unidadeId },
       data: { fornecedorRacaoId: dto.fornecedorId },
       include: { fornecedorRacao: true },
+    });
+  }
+
+  /**
+   * Renova o plantel (Domain Bible secao 2.3): desativa o(s) lote(s) ativo(s)
+   * da unidade e aloja um novo, do zero (RECRIA). O historico do lote antigo
+   * fica preservado — so deixa de contar como "o lote atual" da unidade.
+   */
+  async renovarLote(unidadeId: string, dto: RenovarLoteDto) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.lote.updateMany({
+        where: { unidadeNegocioId: unidadeId, ativo: true },
+        data: { ativo: false },
+      });
+
+      return tx.lote.create({
+        data: {
+          unidadeNegocioId: unidadeId,
+          linhagem: dto.linhagem,
+          quantidadeAvesAlojadas: dto.quantidadeAvesAlojadas,
+          quantidadeAvesVivas: dto.quantidadeAvesAlojadas,
+          idadeDias: 0,
+          ativo: true,
+        },
+      });
     });
   }
 }

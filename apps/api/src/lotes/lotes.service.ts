@@ -37,6 +37,14 @@ export class LotesService {
     return this.prisma.lote.findUniqueOrThrow({ where: { id } });
   }
 
+  /** Historico completo do lote (nao limitado aos ultimos 30 dias como o da empresa) — base pra conversao alimentar do ciclo inteiro. */
+  buscarHistorico(loteId: string) {
+    return this.prisma.historicoProducao.findMany({
+      where: { loteId },
+      orderBy: { dia: "asc" },
+    });
+  }
+
   /**
    * Roda um dia do MotorPostura sobre o lote e propaga o resultado
    * financeiro para o caixa da empresa dona da UnidadeNegocio, tudo numa

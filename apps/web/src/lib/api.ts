@@ -84,6 +84,7 @@ export interface LoteApi {
   quantidadeAvesAlojadas: number;
   quantidadeAvesVivas: number;
   idadeDias: number;
+  ativo: boolean;
 }
 
 export interface ClienteApi {
@@ -226,6 +227,22 @@ export function escolherFornecedorRacao(unidadeId: string, fornecedorId: string)
   return apiFetch<UnidadeNegocioApi>(`/unidades-negocio/${unidadeId}/fornecedor-racao`, {
     method: "PATCH",
     body: JSON.stringify({ fornecedorId }),
+  });
+}
+
+/** Historico completo do lote (nao limitado aos ultimos ~30 dias como o da empresa) — base pra conversao alimentar do ciclo inteiro. */
+export function buscarHistoricoLote(loteId: string) {
+  return apiFetch<RegistroHistoricoApi[]>(`/lotes/${loteId}/historico`);
+}
+
+/** Renova o plantel (Domain Bible secao 2.3): desativa o lote atual e aloja um novo, do zero. */
+export function renovarLote(
+  unidadeId: string,
+  input: { linhagem: "branca" | "vermelha"; quantidadeAvesAlojadas: number }
+) {
+  return apiFetch<LoteApi>(`/unidades-negocio/${unidadeId}/renovar-lote`, {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 

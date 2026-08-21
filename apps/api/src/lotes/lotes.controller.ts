@@ -17,6 +17,11 @@ export class LotesController {
     return this.lotesService.buscarPorId(id);
   }
 
+  @Get(":id/historico")
+  buscarHistorico(@Param("id") id: string) {
+    return this.lotesService.buscarHistorico(id);
+  }
+
   @Post(":id/avancar-dia")
   avancarDia(@Param("id") id: string, @Body() dto: AvancarDiaDto) {
     return this.lotesService.avancarDia(id, dto);

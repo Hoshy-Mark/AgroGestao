@@ -49,7 +49,7 @@ export class EmpresasService {
       include: {
         unidadesNegocio: {
           include: {
-            lotes: true,
+            lotes: { where: { ativo: true } },
             fornecedorRacao: true,
             contratos: { where: { ativo: true }, include: { cliente: true } },
           },

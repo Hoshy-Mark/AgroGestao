@@ -122,6 +122,8 @@ model Lote {
   quantidadeAvesAlojadas Int
   quantidadeAvesVivas    Int
   idadeDias              Int            @default(0)
+  /// Renovar o plantel (Domain Bible secao 2.3) desativa o lote antigo e cria um novo — historico do lote antigo fica preservado.
+  ativo                  Boolean        @default(true)
 
   historico HistoricoProducao[]
 
