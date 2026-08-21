@@ -25,7 +25,8 @@ model Empresa {
   caixa         Float    @default(0)
   divida        Float    @default(0)
   limiteCredito Float    @default(0)
-  reputacao     Int      @default(40)
+  /// Float (nao Int) de proposito: cresce/cai em fracoes de ponto por dia (LotesService.avancarDia) — um campo Int trunca incrementos pequenos e a reputacao nunca sai do lugar.
+  reputacao     Float    @default(40)
   conhecimento  Int      @default(0)
   diaAtual      Int      @default(0)
 
@@ -78,9 +79,10 @@ model Fornecedor {
 model Cliente {
   id                 String @id @default(cuid())
   nome               String
-  /// 0-100, especifico dessa contraparte (GDD secao 14)
-  relacionamento     Int    @default(50)
-  confianca          Int    @default(50)
+  /// 0-100, especifico dessa contraparte (GDD secao 14). Float de proposito
+  /// (mesma razao de Empresa.reputacao): incrementos diarios pequenos.
+  relacionamento     Float  @default(50)
+  confianca          Float  @default(50)
   sensibilidadePreco Int
   prazoMedioDias     Int
   precoOfertadoDuzia Float

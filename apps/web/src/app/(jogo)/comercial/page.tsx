@@ -85,7 +85,11 @@ export default async function ComercialPage() {
                 </div>
                 <div>
                   <span className={styles.specLabel}>Relacionamento</span>
-                  <span className={styles.specValor}>{cliente.relacionamento}/100</span>
+                  <span className={styles.specValor}>{Math.round(cliente.relacionamento)}/100</span>
+                </div>
+                <div>
+                  <span className={styles.specLabel}>Confiança</span>
+                  <span className={styles.specValor}>{Math.round(cliente.confianca)}/100</span>
                 </div>
               </div>
 

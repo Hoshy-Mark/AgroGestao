@@ -87,7 +87,7 @@ export function AppShell({
             </div>
             <div className={styles.statPill}>
               <span className={styles.statPillIcon}>⭐</span>
-              <span className={styles.statPillValue}>{reputacao}</span>
+              <span className={styles.statPillValue}>{Math.round(reputacao)}</span>
             </div>
             <div className={styles.statPill}>
               <span className={styles.statPillIcon}>🧠</span>

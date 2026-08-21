@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import type { EstadoEmpresa, Linhagem, LoteProducao } from "@agrogestao/domain";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { DocumentosFiscaisService } from "../documentos-fiscais/documentos-fiscais.service.js";
+import { clamp } from "../common/numero.util.js";
 import { aplicarTickLote } from "./lote-tick.js";
 import type { CriarLoteDto } from "./dto/criar-lote.dto.js";
 import type { AvancarDiaDto } from "./dto/avancar-dia.dto.js";
@@ -13,6 +15,17 @@ const MERCADO_SPOT_ID = "mercado-spot";
 const PRECO_KG_RACAO_PADRAO = 2.5;
 /** Usado apenas enquanto a unidade nao fechou nenhum Contrato de venda (Domain Bible secao 15). */
 const PRECO_MEDIO_DUZIA_PADRAO = 4.5;
+
+/**
+ * Reputacao e relacionamento sao "o mundo lembra" (GDD Pilar 6/secao 14):
+ * reagem ao resultado do dia e a manter um contrato ativo, nao ficam
+ * parados desde a criacao da empresa. Perder reputacao e mais rapido que
+ * ganhar — confianca e dificil de construir, facil de perder.
+ */
+const REPUTACAO_GANHO_DIA_POSITIVO = 1;
+const REPUTACAO_PERDA_DIA_NEGATIVO = 2;
+const CLIENTE_RELACIONAMENTO_GANHO_DIA = 1;
+const CLIENTE_CONFIANCA_GANHO_DIA = 0.5;
 
 @Injectable()
 export class LotesService {
@@ -58,7 +71,7 @@ export class LotesService {
           include: {
             empresa: true,
             fornecedorRacao: true,
-            contratos: { where: { ativo: true }, take: 1 },
+            contratos: { where: { ativo: true }, take: 1, include: { cliente: true } },
           },
         },
       },
@@ -82,18 +95,17 @@ export class LotesService {
       diaAtual: empresaDb.diaAtual,
     };
 
+    const contratoAtivo = loteDb.unidadeNegocio.contratos[0];
+    const fornecedorAtivo = loteDb.unidadeNegocio.fornecedorRacao;
+
     // Preco de racao vem do Fornecedor escolhido (GDD secao 11.2); preco de
     // venda vem do Contrato ativo (Domain Bible secao 15). Ambos so caem no
     // valor de referencia se o jogador ainda nao decidiu, ou se quem chamou
     // o endpoint sobrescreveu explicitamente.
     const precoKgRacao =
-      mercado.precoKgRacao ??
-      loteDb.unidadeNegocio.fornecedorRacao?.precoKgRacao ??
-      PRECO_KG_RACAO_PADRAO;
+      mercado.precoKgRacao ?? fornecedorAtivo?.precoKgRacao ?? PRECO_KG_RACAO_PADRAO;
     const precoMedioDuzia =
-      mercado.precoMedioDuzia ??
-      loteDb.unidadeNegocio.contratos[0]?.precoUnitario ??
-      PRECO_MEDIO_DUZIA_PADRAO;
+      mercado.precoMedioDuzia ?? contratoAtivo?.precoUnitario ?? PRECO_MEDIO_DUZIA_PADRAO;
 
     const {
       lote: loteAtualizado,
@@ -105,7 +117,18 @@ export class LotesService {
       precoMedioDuzia,
     });
 
-    const [loteSalvo, empresaSalva] = await this.prisma.$transaction([
+    // Reputacao e relacionamento "o mundo lembra" (GDD Pilar 6/secao 14):
+    // resultado positivo constroi reputacao devagar, negativo derruba mais
+    // rapido; manter um contrato ativo constroi relacionamento/confianca
+    // com aquele cliente especifico, dia apos dia.
+    const reputacaoAtualizada = clamp(
+      empresaDb.reputacao +
+        (resultado.resultado >= 0 ? REPUTACAO_GANHO_DIA_POSITIVO : -REPUTACAO_PERDA_DIA_NEGATIVO),
+      0,
+      100
+    );
+
+    const operacoes: Prisma.PrismaPromise<unknown>[] = [
       this.prisma.lote.update({
         where: { id: loteId },
         data: {
@@ -118,6 +141,7 @@ export class LotesService {
         data: {
           caixa: empresaAtualizada.caixa,
           diaAtual: empresaAtualizada.diaAtual,
+          reputacao: reputacaoAtualizada,
         },
       }),
       this.prisma.historicoProducao.create({
@@ -134,15 +158,31 @@ export class LotesService {
           resultado: resultado.resultado,
         },
       }),
-    ]);
+    ];
+
+    if (contratoAtivo) {
+      operacoes.push(
+        this.prisma.cliente.update({
+          where: { id: contratoAtivo.clienteId },
+          data: {
+            relacionamento: clamp(
+              contratoAtivo.cliente.relacionamento + CLIENTE_RELACIONAMENTO_GANHO_DIA,
+              0,
+              100
+            ),
+            confianca: clamp(contratoAtivo.cliente.confianca + CLIENTE_CONFIANCA_GANHO_DIA, 0, 100),
+          },
+        })
+      );
+    }
+
+    const [loteSalvo, empresaSalva] = await this.prisma.$transaction(operacoes);
 
     // Documentos fiscais (Domain Bible secoes 17-18) so depois que o tick
     // persiste com sucesso — nao emite nota pra uma transacao que nao
     // aconteceu de verdade. Decorativos (sem validade fiscal), entao nao
     // entram no $transaction acima: se falharem, o dia ja avancou mesmo
     // assim, so a trilha de auditoria fica incompleta por esse tick.
-    const contratoAtivo = loteDb.unidadeNegocio.contratos[0];
-    const fornecedorAtivo = loteDb.unidadeNegocio.fornecedorRacao;
     const transacaoId = `${loteId}:dia-${empresaEstado.diaAtual}`;
 
     if (resultado.racaoConsumidaKg > 0) {
